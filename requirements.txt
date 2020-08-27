@@ -1,0 +1,6 @@
+numpy
+napari[all]
+catpy
+pandas
+coordinates
+tables
