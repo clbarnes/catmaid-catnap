@@ -4,6 +4,13 @@ View [CATMAID](https://catmaid.org) data using [napari](https://napari.org), pri
 
 `catnap` is optimised for datasets which fit comfortably into RAM - i.e. for dense labelling in a small volume.
 
+For more complex tasks, consider
+
+- [BigCAT](https://github.com/saalfeldlab/bigcat)
+- [Paintera](https://github.com/saalfeldlab/paintera)
+- [TrakEM2](https://imagej.net/TrakEM2)
+- [Ilastik](https://www.ilastik.org/)
+
 ## Usage
 
 ### Library
