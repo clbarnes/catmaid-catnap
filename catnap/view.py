@@ -2,13 +2,16 @@ from __future__ import annotations
 from typing import NamedTuple, Iterable, Tuple, List, Dict
 from copy import copy
 import datetime as dt
+import math
 
 import numpy as np
 import napari
 import pandas as pd
 from vispy.color import Color, ColorArray
+from coordinates import MathDict
 
 from .io import CatnapIO, Image
+from .navigator import Navigator
 
 DIMS = ["z", "y", "x"]
 
@@ -105,6 +108,7 @@ class CatnapViewer:
         self.viewer = napari.Viewer("catnap", axis_labels=("z", "y", "x"))
         self.layers: Dict[str, napari.layers.Layer] = dict()
         self._inner_joined_tables = None
+        self._navigator = Navigator(self.viewer)
 
     @property
     def _joined_tables(self):
@@ -226,7 +230,7 @@ class CatnapViewer:
             points, name=self.points_name, **point_specs.to_viewer_kwargs()
         )
 
-        self.viewer.update_console({"catnap": self})
+        self.viewer.update_console({"cviewer": self})
 
     def export_labels(self, fpath, name="", with_source=False):
         arr = self.layers[self.labels_name].data
@@ -239,3 +243,14 @@ class CatnapViewer:
                 arr, self.io.raw.resolution, self.io.raw.offset, self.io.raw.dims
             )
             img.to_hdf5(fpath, name or "labels", {"date": timestamp()})
+
+    def jump_to(self, z=None, y=None, x=None):
+        dims = "zyx"
+        vals = MathDict({d: v for d, v in zip(dims, [z, y, x]) if v is not None})
+        resolution = MathDict({d: v for d, v in zip(dims, self.io.raw.resolution) if d in vals})
+        offset = MathDict({d: v for d, v in zip(dims, self.io.raw.offset) if d in vals})
+        args = (vals - offset) / resolution
+        return self.jump_to_px(**math.round(args))
+
+    def jump_to_px(self, z=None, y=None, x=None):
+        return self._navigator.move_to(x, y, z)
