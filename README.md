@@ -38,7 +38,7 @@ cio.to_hdf5("path/to/cdata.hdf5")
 # you can retrieve it later with
 cio_2 = CatnapIO.from_hdf5("path/to/cdata.hdf5")
 
-with gui_qt():  # this is a re-export from the napari library
+with gui_qt():  # this is a re-export from napari
     my_cviewer = CatnapViewer(cio)
     my_cviewer.show()
 
