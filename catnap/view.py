@@ -110,6 +110,31 @@ class CatnapViewer:
         self._inner_joined_tables = None
         self._navigator = Navigator(self.viewer)
 
+    def _lowest_unused_label(self):
+        """Also rejects special IDs"""
+        existing = np.unique(self.layers[self.labels_name].data)
+        if existing[0] == 0:
+            existing = existing[1:]
+        for expected, exist in enumerate(existing, 1):
+            if expected != exist:
+                return expected
+        # alternative all-numpy implementation
+        # expected = np.arange(len(existing), dtype=existing.dtype) + 1
+        # diffs = existing - expected
+        # return expected[(diffs != 0).argmax]
+
+    @property
+    def raw_layer(self) -> napari.layers.Image:
+        return self.layers[self.raw_name]
+
+    @property
+    def labels_layer(self) -> napari.layers.Labels:
+        return self.layers[self.labels_name]
+
+    def next_id(self):
+        this_id = self._lowest_unused_label()
+        self.labels_layer.selected_label = this_id
+
     @property
     def _joined_tables(self):
         if self._inner_joined_tables is None:
