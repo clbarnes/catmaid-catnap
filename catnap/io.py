@@ -1,12 +1,16 @@
 from __future__ import annotations
 from typing import Optional, List, Dict
+import logging
 
 import pandas as pd
 import numpy as np
 import h5py
+from tqdm import tqdm
 
 from .catmaid_interface import Catmaid, Bbox, ConnectorDetail
 from .utils import CoordZYX
+
+logger = logging.getLogger(__name__)
 
 
 def trim_cols(df, required: List[str], name=None):
@@ -168,9 +172,10 @@ class CatnapIO(TransformerMixin):
         dims = raw.dims
 
         extents = [CoordZYX({d: x for d, x in zip(dims, ext)}) for ext in raw.extents()]
+        logger.info("Fetching annotations from CATMAID")
         treenodes, raw_conns = catmaid.nodes_in_bbox(Bbox.from_start_stop(*extents))
         connectors, partners = ConnectorDetail.to_connector_partners_df(
-            catmaid.connector_detail_many(raw_conns.id)
+            tqdm(catmaid.connector_detail_many(raw_conns.id), desc="connector details", total=len(raw_conns.id))
         )
         return cls(raw, treenodes, connectors, partners, labels)
 
