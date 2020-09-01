@@ -65,7 +65,9 @@ def parse_args(args=None):
         help="Radius of the label seed squares placed at each treenode, in px",
     )
     add_catmaid_args(parser)
-    parser.add_argument("-v", "--verbose", action="count", help="Increase logging verbosity")
+    parser.add_argument(
+        "-v", "--verbose", action="count", help="Increase logging verbosity"
+    )
     return parser.parse_args(args)
 
 

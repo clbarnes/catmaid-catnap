@@ -175,7 +175,11 @@ class CatnapIO(TransformerMixin):
         logger.info("Fetching annotations from CATMAID")
         treenodes, raw_conns = catmaid.nodes_in_bbox(Bbox.from_start_stop(*extents))
         connectors, partners = ConnectorDetail.to_connector_partners_df(
-            tqdm(catmaid.connector_detail_many(raw_conns.id), desc="connector details", total=len(raw_conns.id))
+            tqdm(
+                catmaid.connector_detail_many(raw_conns.id),
+                desc="connector details",
+                total=len(raw_conns.id),
+            )
         )
         return cls(raw, treenodes, connectors, partners, labels)
 
