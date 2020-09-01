@@ -6,6 +6,7 @@ from typing import Iterable
 
 import numpy as np
 import h5py
+from catpy import CatmaidClient
 
 from .utils import parse_hdf5_path, parse_tuple, setup_logging
 from .. import Catmaid, CatnapIO, Image
@@ -149,7 +150,7 @@ def main():
             if val is not None:
                 creds[key] = val
 
-    catmaid = Catmaid(**creds)
+    catmaid = Catmaid(CatmaidClient(**creds))
 
     io = CatnapIO.from_catmaid(catmaid, raw, label)
     if label is None:
