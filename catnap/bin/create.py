@@ -69,26 +69,6 @@ def parse_args(args=None):
     return parser.parse_args(args)
 
 
-def run(
-    input_fpath,
-    input_dataset,
-    output_fpath,
-    output_group=None,
-    offset=None,
-    resolution=None,
-    label_fpath=None,
-    label_dataset=None,
-    seed_radius=None,
-    base_url=None,
-    project_id=None,
-    token=None,
-    auth_name=None,
-    auth_pass=None,
-    credentials=None,
-):
-    pass
-
-
 def same_arrs(it: Iterable, default=None):
     last = None
     for item in it:

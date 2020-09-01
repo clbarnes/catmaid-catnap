@@ -13,6 +13,26 @@ For more complex tasks, consider
 
 ## Usage
 
+### Command line
+
+#### Data preparation
+
+Create a file for use with catnap using an existing raw image dataset, fetching annotation data from CATMAID, and creating a volume for labels with seed labels around treenodes.
+
+```sh
+catnap-create existing_data.hdf5:/raw catnap_format.hdf5 --credentials my_credentials.json --seed-radius=3
+```
+
+See `catnap-create --help` for more information.
+
+#### Annotation
+
+Open a napari window viewing the pre-formatted data for label annotation.
+
+```sh
+catnap catnap_format.hdf5
+```
+
 ### Library
 
 Assuming you have a chunk of image data as a numpy array in ZYX,
@@ -59,6 +79,8 @@ In the `napari` console, the CatnapViewer is available as the `cviewer` variable
 >>> cviewer.jump_to(z=19.8, y=19355)
 >>> # ... or in pixel space with
 >>> cviewer.jump_to_px(y=10, x=5)
+>>> # get more information on available functionality with
+>>> help(cviewer)
 ```
 
 ## Notes

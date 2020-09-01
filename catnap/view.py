@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import NamedTuple, Iterable, Tuple, List, Dict
+from typing import NamedTuple, Iterable, Tuple, List, Dict, Union
 from copy import copy
 import datetime as dt
 import math
@@ -119,11 +119,13 @@ class PreRenderer(TransformerMixin):
         self.skel_edge_spec = skel_edge_spec or cls.skel_edge_spec
         self.conn_edge_spec = conn_edge_spec or cls.conn_edge_spec
 
+        self._inner_joined_tables = None
+
     def _filter_translate_points(self, df, as_int=False, dims=DIMS):
         dims = list(dims)
         idxs = self.io.coords_in_raw(df[dims])
         out = df[idxs].copy()
-        out[dims] = self.coords_to_px(out[dims], as_int)
+        out[dims] = self.world_to_px(out[dims], as_int)
         return out
 
     def _partner_points(self) -> Tuple[pd.DataFrame, NodeSpecArrays]:
@@ -150,9 +152,9 @@ class PreRenderer(TransformerMixin):
         return locs, specs
 
     def _world_startstop_to_px_vectors(self, starts, stops) -> np.ndarray:
-        starts_px = self.world_to_px(starts).to_numpy()
+        starts_px = np.asarray(self.world_to_px(starts))
         starts_px[:, 0] = np.round(starts_px[:, 0])
-        stops_px = self.world_to_px(stops).to_numpy()
+        stops_px = np.asarray(self.world_to_px(stops))
         stops_px[:, 0] = np.round(stops_px[:, 0])
 
         out = []
@@ -218,8 +220,13 @@ class CatnapViewer(TransformerMixin):
     _conn_edge_name = "connector edges"
     _points_name = "locations"
 
-    def __init__(self, prerenderer: PreRenderer):
-        self.prerenderer = prerenderer
+    _var_name = "cviewer"
+
+    def __init__(self, internal: Union[CatnapIO, PreRenderer]):
+        if isinstance(internal, CatnapIO):
+            internal = PreRenderer(internal)
+
+        self.prerenderer = internal
 
         self.viewer = napari.Viewer("catnap", axis_labels=("z", "y", "x"))
         self.layers: Dict[str, napari.layers.Layer] = dict()
@@ -228,6 +235,7 @@ class CatnapViewer(TransformerMixin):
 
     @property
     def io(self):
+        """Underlying CatnapIO instance for access to initial data"""
         return self.prerenderer.io
 
     def _lowest_unused_label(self):
@@ -245,49 +253,57 @@ class CatnapViewer(TransformerMixin):
 
     @property
     def raw_layer(self) -> napari.layers.Image:
+        """Return napari.Layer for raw data"""
         return self.layers[self._raw_name]
 
     @property
     def labels_layer(self) -> napari.layers.Labels:
-        return self.layers[self._labels_name]
+        """Return napari.Layer for label data or None"""
+        return self.layers.get(self._labels_name)
 
     def next_id(self):
+        """Return lowest unused label"""
         this_id = self._lowest_unused_label()
         self.labels_layer.selected_label = this_id
 
     def show(self):
-        self.layers[self.raw_name] = self.viewer.add_image(
+        self.layers[self._raw_name] = self.viewer.add_image(
             self.io.raw.array, name=self._raw_name
         )
 
         if self.io.labels is not None:
-            self.layers[self.labels_name] = self.viewer.add_labels(
+            self.layers[self._labels_name] = self.viewer.add_labels(
                 self.io.labels.array, name=self._labels_name
             )
 
         skel_vecs = self.prerenderer._skeleton_vectors()
-        self.layers[self.skel_edge_name] = self.viewer.add_vectors(
+        self.layers[self._skel_edge_name] = self.viewer.add_vectors(
             skel_vecs, name=self._skel_edge_name, **self.prerenderer.skel_edge_spec
         )
 
         conn_vecs = self.prerenderer._connector_vectors()
-        self.layers[self.conn_edge_name] = self.viewer.add_vectors(
+        self.layers[self._conn_edge_name] = self.viewer.add_vectors(
             conn_vecs, name=self._conn_edge_name, **self.prerenderer.conn_edge_spec
         )
         points, point_specs = self.prerenderer._points()
 
-        self.layers[self.points_name] = self.viewer.add_points(
+        self.layers[self._points_name] = self.viewer.add_points(
             points, name=self._points_name, **point_specs.to_viewer_kwargs()
         )
 
-        self.viewer.update_console({"cviewer": self})
+        self.viewer.update_console({self._var_name: self})
 
-    def export_labels(self, fpath, name="", with_source=False):
+    def export_labels(self, fpath, name=None, with_source=False):
+        """Save label array.
+
+        If `with_source` is falsey, `name` is the dataset.
+        Otherwise, `name` is the group into which an entire catnap annotation structure will be saved.
+        """
         arr = self.layers[self._labels_name].data
         if with_source:
             io = copy(self.io)
             io.labels = arr
-            io.to_hdf5(fpath, name)
+            io.to_hdf5(fpath, name or "")
         else:
             img = Image(
                 arr, self.io.raw.resolution, self.io.raw.offset, self.io.raw.dims
@@ -295,6 +311,10 @@ class CatnapViewer(TransformerMixin):
             img.to_hdf5(fpath, name or "labels", {"date": timestamp()})
 
     def jump_to(self, z=None, y=None, x=None):
+        """Move the viewer to the given world coordinates.
+
+        If any dimension is not given, it will be kept the same.
+        """
         dims = DIMS
         vals = MathDict({d: v for d, v in zip(dims, [z, y, x]) if v is not None})
         resolution = MathDict(
@@ -305,4 +325,8 @@ class CatnapViewer(TransformerMixin):
         return self.jump_to_px(**math.round(args))
 
     def jump_to_px(self, z=None, y=None, x=None):
+        """Move the viewer to the given voxel coordinates in the raw data.
+
+        If any dimension is not given, it will be kept the same.
+        """
         return self._navigator.move_to(x, y, z)

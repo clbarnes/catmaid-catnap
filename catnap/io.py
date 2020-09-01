@@ -146,6 +146,7 @@ class CatnapIO(TransformerMixin):
 
     @classmethod
     def from_hdf5(cls, fpath, gname=""):
+
         prefix = f"{gname}/tables"
         with pd.HDFStore(fpath, "r") as f:
             treenodes = deserialize_treenodes(pd.read_hdf(f, f"{prefix}/treenodes"))
