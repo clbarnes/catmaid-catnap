@@ -25,7 +25,7 @@ setup(
         "Programming Language :: Python :: 3 :: Only",
     ],
     keywords="neuroscience, connectomics, image, graph",
-    packages=find_packages(where="catnap"),
+    packages=find_packages(where="catnap/*"),
     python_requires=">=3.7, <4",
     install_requires=["napari[all]", "catpy", "coordinates", "numpy"],
     entry_points={
