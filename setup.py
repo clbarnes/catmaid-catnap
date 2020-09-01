@@ -14,7 +14,7 @@ setup(
     description="Experiments working with CATMAID and napari",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/clbarnes/catnap",
+    url="https://github.com/clbarnes/catmaid-catnap",
     author="Chris L. Barnes",
     author_email="cb619@cam.ac.uk",
     classifiers=[
