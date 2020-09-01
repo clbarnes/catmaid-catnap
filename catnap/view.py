@@ -109,10 +109,6 @@ class PreRenderer(TransformerMixin):
         conn_edge_spec=None,
     ):
         self.io = catnap_io
-        self.viewer = napari.Viewer("catnap", axis_labels=("z", "y", "x"))
-        self.layers: Dict[str, napari.layers.Layer] = dict()
-        self._inner_joined_tables = None
-        self._navigator = Navigator(self.viewer)
 
         cls = type(self)
 
@@ -122,18 +118,6 @@ class PreRenderer(TransformerMixin):
 
         self.skel_edge_spec = skel_edge_spec or cls.skel_edge_spec
         self.conn_edge_spec = conn_edge_spec or cls.conn_edge_spec
-
-    @property
-    def _joined_tables(self):
-        if self._inner_joined_tables is None:
-            self._inner_joined_tables = self.io.join_tables()
-        return self._inner_joined_tables
-
-    def coords_to_px(self, zyx, as_int=False):
-        arr = (zyx - self.io.raw.offset) / self.io.raw.resolution
-        if as_int:
-            arr = arr.astype(np.uint64)
-        return arr
 
     def _filter_translate_points(self, df, as_int=False, dims=DIMS):
         dims = list(dims)

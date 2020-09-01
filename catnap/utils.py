@@ -4,6 +4,9 @@ import numpy as np
 
 CoordZYX = spaced_coordinate("CoordZYX", "zyx")
 
+DEFAULT_OFFSET = (0, 0, 0)
+DEFAULT_RESOLUTION = (1, 1, 1)
+
 
 def treenodes_to_vecs(treenodes: pd.DataFrame):
     merged = pd.merge(

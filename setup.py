@@ -28,5 +28,11 @@ setup(
     packages=find_packages(where="catnap"),
     python_requires=">=3.7, <4",
     install_requires=["napari[all]", "catpy", "coordinates", "numpy"],
+    entry_points={
+        "console_scripts": [
+            "catnap=catnap.bin.view:main",
+            "catnap-create=catnap.bin.create:main",
+        ]
+    },
     extras_require={},
 )
