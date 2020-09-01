@@ -22,3 +22,8 @@ def default(arg, default):
     if arg is None:
         return default
     return arg
+
+
+class LocationOfInterest:
+    def __init__(self, location: np.ndarray):
+        self.location = location

@@ -5,3 +5,4 @@ pandas
 coordinates
 tqdm
 tables
+scipy
