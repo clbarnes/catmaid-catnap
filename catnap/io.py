@@ -18,13 +18,40 @@ def trim_cols(df, required: List[str], name=None):
         raise ValueError(msg)
 
 
-class Image:
+class TransformerMixin:
+    _transformer_attr: Optional[str] = None
+
+    def world_to_px(self, world_coords, as_int=False, round_z=False):
+        if self._transformer_attr is None:
+            out = (np.asarray(world_coords) - self.offset) / self.resolution
+            if round_z:
+                out[..., 0] = np.round(out[..., 0], dtype=out.dtype)
+            if as_int:
+                out = out.astype(np.uint64)
+            return out
+        else:
+            return getattr(self, self._transformer_attr).world_to_px(
+                world_coords, as_int, round_z
+            )
+
+    def px_to_world(self, px_coords):
+        if self._transformer_attr is None:
+            return (
+                np.asarray(px_coords, dtype=np.float64) * self.resolution + self.offset
+            )
+        else:
+            return getattr(self, self._transformer_attr).world_to_px(px_coords)
+
+
+class Image(TransformerMixin):
     def __init__(
         self, array, resolution=(1, 1, 1), offset=(0, 0, 0), dims=("z", "y", "x")
     ):
         self.array = np.asarray(array)
         self.resolution = np.asarray(resolution, dtype=float)
         self.offset = np.asarray(offset, dtype=float)
+        if list(dims) != ["z", "y", "x"]:
+            raise NotImplementedError("Non-ZYX orientations are not supported")
         self.dims = dims
 
     def extents(self):
@@ -77,7 +104,9 @@ def deserialize_treenodes(tns: pd.DataFrame):
     return tns
 
 
-class CatnapIO:
+class CatnapIO(TransformerMixin):
+    _transformer_attr = "raw"
+
     def __init__(
         self,
         raw: Image,
@@ -102,6 +131,7 @@ class CatnapIO:
         self.set_labels(labels)
 
     def to_hdf5(self, fpath, gname=""):
+        gname = gname.rstrip("/") if gname else ""
         prefix = f"{gname}/tables"
         with pd.HDFStore(fpath, "w") as f:
             serialize_treenodes(self.treenodes).to_hdf(f, f"{prefix}/treenodes")

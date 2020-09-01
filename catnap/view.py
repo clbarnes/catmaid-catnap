@@ -10,7 +10,7 @@ import pandas as pd
 from vispy.color import Color, ColorArray
 from coordinates import MathDict
 
-from .io import CatnapIO, Image
+from .io import CatnapIO, Image, TransformerMixin
 from .navigator import Navigator
 
 DIMS = ["z", "y", "x"]
@@ -87,7 +87,9 @@ def remove_suffix(s: str, sep="_"):
     return sep.join(most)
 
 
-class CatnapViewer:
+class PreRenderer(TransformerMixin):
+    _transformer_attr = "io"
+
     presynapse_spec = NodeSpec(face_color=(1, 0, 0, 1))
     postsynapse_spec = NodeSpec(face_color=(0, 1, 1, 1))
     connector_spec = NodeSpec(
@@ -97,43 +99,29 @@ class CatnapViewer:
     skel_edge_spec = {"edge_color": "y"}
     conn_edge_spec = {"edge_color": "cyan"}
 
-    labels_name = "labels"
-    skel_edge_name = "skeleton edges"
-    raw_name = "raw"
-    conn_edge_name = "connector edges"
-    points_name = "locations"
-
-    def __init__(self, catnap_io: CatnapIO):
+    def __init__(
+        self,
+        catnap_io: CatnapIO,
+        presynapse_spec=None,
+        postsynapse_spec=None,
+        connector_spec=None,
+        skel_edge_spec=None,
+        conn_edge_spec=None,
+    ):
         self.io = catnap_io
         self.viewer = napari.Viewer("catnap", axis_labels=("z", "y", "x"))
         self.layers: Dict[str, napari.layers.Layer] = dict()
         self._inner_joined_tables = None
         self._navigator = Navigator(self.viewer)
 
-    def _lowest_unused_label(self):
-        """Also rejects special IDs"""
-        existing = np.unique(self.layers[self.labels_name].data)
-        if existing[0] == 0:
-            existing = existing[1:]
-        for expected, exist in enumerate(existing, 1):
-            if expected != exist:
-                return expected
-        # alternative all-numpy implementation
-        # expected = np.arange(len(existing), dtype=existing.dtype) + 1
-        # diffs = existing - expected
-        # return expected[(diffs != 0).argmax]
+        cls = type(self)
 
-    @property
-    def raw_layer(self) -> napari.layers.Image:
-        return self.layers[self.raw_name]
+        self.presynapse_spec = presynapse_spec or cls.presynapse_spec
+        self.postsynapse_spec = postsynapse_spec or cls.postsynapse_spec
+        self.connector_spec = connector_spec or cls.connector_spec
 
-    @property
-    def labels_layer(self) -> napari.layers.Labels:
-        return self.layers[self.labels_name]
-
-    def next_id(self):
-        this_id = self._lowest_unused_label()
-        self.labels_layer.selected_label = this_id
+        self.skel_edge_spec = skel_edge_spec or cls.skel_edge_spec
+        self.conn_edge_spec = conn_edge_spec or cls.conn_edge_spec
 
     @property
     def _joined_tables(self):
@@ -156,7 +144,7 @@ class CatnapViewer:
 
     def _partner_points(self) -> Tuple[pd.DataFrame, NodeSpecArrays]:
         tn_dims = [f"{d}_t" for d in DIMS]
-        partners = self._filter_translate_points(self._joined_tables, dims=tn_dims)
+        partners = self._filter_translate_points(self.joined_tables, dims=tn_dims)
         partners.sort_values("is_presynaptic", inplace=True)
         n_pre = np.sum(partners["is_presynaptic"])
         n_post = len(partners) - n_pre
@@ -178,9 +166,9 @@ class CatnapViewer:
         return locs, specs
 
     def _world_startstop_to_px_vectors(self, starts, stops) -> np.ndarray:
-        starts_px = self.coords_to_px(starts).to_numpy()
+        starts_px = self.world_to_px(starts).to_numpy()
         starts_px[:, 0] = np.round(starts_px[:, 0])
-        stops_px = self.coords_to_px(stops).to_numpy()
+        stops_px = self.world_to_px(stops).to_numpy()
         stops_px[:, 0] = np.round(stops_px[:, 0])
 
         out = []
@@ -205,7 +193,7 @@ class CatnapViewer:
         return np.array(out, dtype=starts_px.dtype)
 
     def _connector_vectors(self) -> np.ndarray:
-        merged = self._joined_tables
+        merged = self.joined_tables
 
         start = get_cols(merged, ["z_c", "y_c", "x_c"], remove_suffix)
         stop = get_cols(merged, ["z_t", "y_t", "x_t"], remove_suffix)
@@ -230,35 +218,88 @@ class CatnapViewer:
 
         return self._world_startstop_to_px_vectors(child_points, parent_points)
 
+    @property
+    def joined_tables(self):
+        if self._inner_joined_tables is None:
+            self._inner_joined_tables = self.io.join_tables()
+        return self._inner_joined_tables
+
+
+class CatnapViewer(TransformerMixin):
+    _transformer_attr = "prerenderer"
+
+    _labels_name = "labels"
+    _skel_edge_name = "skeleton edges"
+    _raw_name = "raw"
+    _conn_edge_name = "connector edges"
+    _points_name = "locations"
+
+    def __init__(self, prerenderer: PreRenderer):
+        self.prerenderer = prerenderer
+
+        self.viewer = napari.Viewer("catnap", axis_labels=("z", "y", "x"))
+        self.layers: Dict[str, napari.layers.Layer] = dict()
+        self._inner_joined_tables = None
+        self._navigator = Navigator(self.viewer)
+
+    @property
+    def io(self):
+        return self.prerenderer.io
+
+    def _lowest_unused_label(self):
+        """Also rejects special IDs"""
+        existing = np.unique(self.layers[self._labels_name].data)
+        if existing[0] == 0:
+            existing = existing[1:]
+        for expected, exist in enumerate(existing, 1):
+            if expected != exist:
+                return expected
+        # alternative all-numpy implementation
+        # expected = np.arange(len(existing), dtype=existing.dtype) + 1
+        # diffs = existing - expected
+        # return expected[(diffs != 0).argmax]
+
+    @property
+    def raw_layer(self) -> napari.layers.Image:
+        return self.layers[self._raw_name]
+
+    @property
+    def labels_layer(self) -> napari.layers.Labels:
+        return self.layers[self._labels_name]
+
+    def next_id(self):
+        this_id = self._lowest_unused_label()
+        self.labels_layer.selected_label = this_id
+
     def show(self):
         self.layers[self.raw_name] = self.viewer.add_image(
-            self.io.raw.array, name=self.raw_name
+            self.io.raw.array, name=self._raw_name
         )
 
         if self.io.labels is not None:
             self.layers[self.labels_name] = self.viewer.add_labels(
-                self.io.labels.array, name=self.labels_name
+                self.io.labels.array, name=self._labels_name
             )
 
-        skel_vecs = self._skeleton_vectors()
+        skel_vecs = self.prerenderer._skeleton_vectors()
         self.layers[self.skel_edge_name] = self.viewer.add_vectors(
-            skel_vecs, name=self.skel_edge_name, **self.skel_edge_spec
+            skel_vecs, name=self._skel_edge_name, **self.prerenderer.skel_edge_spec
         )
 
-        conn_vecs = self._connector_vectors()
+        conn_vecs = self.prerenderer._connector_vectors()
         self.layers[self.conn_edge_name] = self.viewer.add_vectors(
-            conn_vecs, name=self.conn_edge_name, **self.conn_edge_spec
+            conn_vecs, name=self._conn_edge_name, **self.prerenderer.conn_edge_spec
         )
-        points, point_specs = self._points()
+        points, point_specs = self.prerenderer._points()
 
         self.layers[self.points_name] = self.viewer.add_points(
-            points, name=self.points_name, **point_specs.to_viewer_kwargs()
+            points, name=self._points_name, **point_specs.to_viewer_kwargs()
         )
 
         self.viewer.update_console({"cviewer": self})
 
     def export_labels(self, fpath, name="", with_source=False):
-        arr = self.layers[self.labels_name].data
+        arr = self.layers[self._labels_name].data
         if with_source:
             io = copy(self.io)
             io.labels = arr
@@ -270,9 +311,11 @@ class CatnapViewer:
             img.to_hdf5(fpath, name or "labels", {"date": timestamp()})
 
     def jump_to(self, z=None, y=None, x=None):
-        dims = "zyx"
+        dims = DIMS
         vals = MathDict({d: v for d, v in zip(dims, [z, y, x]) if v is not None})
-        resolution = MathDict({d: v for d, v in zip(dims, self.io.raw.resolution) if d in vals})
+        resolution = MathDict(
+            {d: v for d, v in zip(dims, self.io.raw.resolution) if d in vals}
+        )
         offset = MathDict({d: v for d, v in zip(dims, self.io.raw.offset) if d in vals})
         args = (vals - offset) / resolution
         return self.jump_to_px(**math.round(args))
