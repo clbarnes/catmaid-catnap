@@ -233,10 +233,19 @@ class CatnapViewer(TransformerMixin):
         self._inner_joined_tables = None
         self._navigator = Navigator(self.viewer)
 
+    def _keybinds(self):
+        @self.labels_layer.bind_key("n")
+        def next_id(_):
+            """Set the active label to an unused one"""
+            self.next_id()
+
     @property
     def io(self):
         """Underlying CatnapIO instance for access to initial data"""
         return self.prerenderer.io
+
+    def _max_label_plus_one(self):
+        return self.labels_layer.data.max() + 1
 
     def _lowest_unused_label(self):
         """Also rejects special IDs"""
@@ -262,9 +271,11 @@ class CatnapViewer(TransformerMixin):
         return self.layers.get(self._labels_name)
 
     def next_id(self):
-        """Return lowest unused label"""
-        this_id = self._lowest_unused_label()
+        """Switch to an unused label"""
+        # this_id = self._lowest_unused_label()
+        this_id = self._max_label_plus_one()
         self.labels_layer.selected_label = this_id
+        return this_id
 
     def show(self):
         self.layers[self._raw_name] = self.viewer.add_image(
@@ -291,6 +302,7 @@ class CatnapViewer(TransformerMixin):
             points, name=self._points_name, **point_specs.to_viewer_kwargs()
         )
 
+        self._keybinds()
         self.viewer.update_console({self._var_name: self})
 
     def export_labels(self, fpath, name=None, with_source=False):
