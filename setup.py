@@ -36,6 +36,7 @@ setup(
         "numpy",
         "tqdm",
         "scikit-image",
+        "pandas",
     ],
     entry_points={
         "console_scripts": [

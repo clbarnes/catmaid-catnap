@@ -43,6 +43,16 @@ class FalseMerge(LocationOfInterest):
         for skel1, skel2 in combinations(skels, 2):
             yield cls.from_skeletons(label, skel1, skel2, treenodes)
 
+    @staticmethod
+    def to_dataframe(false_merges: Iterable[FalseMerge]):
+        rows = [
+            [m.label, m.skel1, m.skel2, m.location[0], m.location[1], m.location[2]]
+            for m in false_merges
+        ]
+        return pd.DataFrame(
+            rows, columns=["label", "skeleton1", "skeleton2", "z", "y", "x"]
+        )
+
 
 class FalseSplit(LocationOfInterest):
     def __init__(self, skel, node1, node2, label1, label2, location):
@@ -70,6 +80,26 @@ class FalseSplit(LocationOfInterest):
                 edge_row.label_parent,
                 np.array(loc_row),
             )
+
+    @staticmethod
+    def to_dataframe(false_splits: Iterable[FalseSplit]):
+        rows = [
+            [
+                m.skel,
+                m.node1,
+                m.node2,
+                m.label1,
+                m.label2,
+                m.location[0],
+                m.location[1],
+                m.location[2],
+            ]
+            for m in false_splits
+        ]
+        return pd.DataFrame(
+            rows,
+            columns=["skeleton", "node1", "node2", "label1", "label2", "z", "y", "x"],
+        )
 
 
 class Assessor(TransformerMixin):
