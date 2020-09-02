@@ -29,7 +29,14 @@ setup(
     keywords="neuroscience, connectomics, image, graph",
     packages=find_packages(where="catnap/*"),
     python_requires=">=3.7, <4",
-    install_requires=["napari[all]", "catpy", "coordinates", "numpy", "tqdm"],
+    install_requires=[
+        "napari[all]",
+        "catpy",
+        "coordinates",
+        "numpy",
+        "tqdm",
+        "scikit-image",
+    ],
     entry_points={
         "console_scripts": [
             "catnap=catnap.bin.view:main",
