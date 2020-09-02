@@ -29,7 +29,7 @@ class TransformerMixin:
         if self._transformer_attr is None:
             out = (np.asarray(world_coords) - self.offset) / self.resolution
             if round_z:
-                out[..., 0] = np.round(out[..., 0], dtype=out.dtype)
+                out[..., 0] = np.round(out[..., 0]).astype(out.dtype)
             if as_int:
                 out = out.astype(np.uint64)
             return out

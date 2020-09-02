@@ -8,3 +8,7 @@ tables
 scipy
 scikit-image
 pandas
+
+# dev
+
+pytest

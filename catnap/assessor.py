@@ -4,7 +4,7 @@ from itertools import combinations
 
 import pandas as pd
 import numpy as np
-from scipy.spatial import cdist
+from scipy.spatial.distance import cdist
 from skimage import measure
 
 from .io import (
@@ -29,8 +29,8 @@ class FalseMerge(LocationOfInterest):
         cls, label: int, skel1: int, skel2: int, treenodes
     ) -> FalseMerge:
         dims = ["z", "y", "x"]
-        tns1 = treenodes[treenodes["skeleton"] == skel1, dims]
-        tns2 = treenodes[treenodes["skeleton"] == skel2, dims]
+        tns1 = treenodes[treenodes["skeleton"] == skel1][dims]
+        tns2 = treenodes[treenodes["skeleton"] == skel2][dims]
         sq = cdist(tns1, tns2)
         idx1, idx2 = np.unravel_index(np.argmin(sq), sq.shape)
         loc = (tns1.iloc[idx1][dims] + tns2.iloc[idx2][dims]) / 2
@@ -41,6 +41,8 @@ class FalseMerge(LocationOfInterest):
         cls, label: int, skels: Iterable[int], treenodes: pd.DataFrame
     ) -> Iterator[FalseMerge]:
         for skel1, skel2 in combinations(skels, 2):
+            if skel1 == skel2:
+                continue
             yield cls.from_skeletons(label, skel1, skel2, treenodes)
 
     @staticmethod
@@ -118,9 +120,7 @@ class Assessor(TransformerMixin):
 
     @property
     def internal_edges(self) -> pd.DataFrame:
-        in_raw_parent = (
-            np.asarray(self.treenodes["in_raw_parent"].fillna(False), bool),
-        )
+        in_raw_parent = np.asarray(self.treenodes["in_raw_parent"].fillna(False), bool)
         return self.treenodes[self.treenodes["in_raw"] & in_raw_parent]
 
     def false_splits(self):
@@ -131,7 +131,7 @@ class Assessor(TransformerMixin):
         for label in np.unique(tns["label"]):
             these = tns[tns["label"] == label]
             skels = np.unique(these["skeleton"])
-            yield from FalseMerge.from_n_skeletons(skels)
+            yield from FalseMerge.from_n_skeletons(label, skels, these)
 
     def _prepare_treenodes(self) -> pd.DataFrame:
         tns = self._treenodes_px()
@@ -154,27 +154,26 @@ class Assessor(TransformerMixin):
             right_on="id",
             suffixes=(None, "_parent"),
         )
-        merged.drop("parent_parent", inplace=True)
+        merged.drop(columns=["parent_parent"], inplace=True)
         return deserialize_treenodes(merged)
 
     def _child_labels(self, merged_treenodes) -> pd.array:
-        idxs = merged_treenodes[
-            self.treenodes["in_raw"], ["z_px", "y_px", "x_px"],
-        ].to_numpy()
-        child_labels = self.io.labels[idxs]
-        all_child = pd.array(np.full(len(self.treenodes), np.nan), dtype="UInt64")
-        all_child[merged_treenodes["in_raw"]] = child_labels
+        in_raw = merged_treenodes["in_raw"]
+        px_locs = merged_treenodes[in_raw][["z_px", "y_px", "x_px"]].to_numpy()
+        child_labels = self.io.labels.array[tuple(px_locs.T)]
+        all_child = pd.array(np.full(len(merged_treenodes), np.nan), dtype="UInt64")
+        all_child[in_raw] = child_labels
         return all_child
 
     def _parent_labels(self, merged_treenodes) -> pd.array:
-        in_raw = (np.asarray(merged_treenodes["in_raw_parent"].fillna(False), bool),)
-        idxs = np.asarray(
-            merged_treenodes[in_raw, ["z_px_parent", "y_px_parent", "x_px_parent"]],
+        in_raw = np.asarray(merged_treenodes["in_raw_parent"].fillna(False), bool)
+        px_loc = np.asarray(
+            merged_treenodes[in_raw][["z_px_parent", "y_px_parent", "x_px_parent"]],
             int,
         )
-        parent_labels = self.io.labels[idxs]
+        parent_labels = self.io.labels.array[tuple(px_loc.T)]
 
-        all_parent = pd.array(np.full(len(self.treenodes), np.nan), dtype="UInt64")
+        all_parent = pd.array(np.full(len(merged_treenodes), np.nan), dtype="UInt64")
 
         all_parent[in_raw] = parent_labels
         return all_parent
