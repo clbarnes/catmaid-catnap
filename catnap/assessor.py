@@ -152,11 +152,13 @@ class Assessor(TransformerMixin):
     def relabel(self) -> Assessor:
         if self.io.labels is not None:
             lbl = self.io.labels
-            relabelled = Image(
-                measure.label(lbl.array), lbl.resolution, lbl.offset, lbl.dims,
-            )
+            first_zero = (lbl.array == 0).argmax()
+            relabelled = measure.label(lbl.array) + 1
+            to_zero = relabelled.flatten()[first_zero]
+            relabelled[relabelled == to_zero] = 0
+            labels = Image(relabelled, lbl.resolution, lbl.offset, lbl.dims,)
         else:
-            relabelled = None
+            labels = None
 
         return type(self)(
             CatnapIO(
@@ -164,6 +166,6 @@ class Assessor(TransformerMixin):
                 self.io.treenodes,
                 self.io.connectors,
                 self.io.partners,
-                relabelled,
+                labels,
             )
         )
