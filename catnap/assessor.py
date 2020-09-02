@@ -5,8 +5,15 @@ from itertools import combinations
 import pandas as pd
 import numpy as np
 from scipy.spatial import cdist
+from skimage import measure
 
-from .io import CatnapIO, TransformerMixin, serialize_treenodes, deserialize_treenodes
+from .io import (
+    CatnapIO,
+    Image,
+    TransformerMixin,
+    serialize_treenodes,
+    deserialize_treenodes,
+)
 from .utils import LocationOfInterest
 
 
@@ -141,3 +148,22 @@ class Assessor(TransformerMixin):
 
         all_parent[in_raw] = parent_labels
         return all_parent
+
+    def relabel(self) -> Assessor:
+        if self.io.labels is not None:
+            lbl = self.io.labels
+            relabelled = Image(
+                measure.label(lbl.array), lbl.resolution, lbl.offset, lbl.dims,
+            )
+        else:
+            relabelled = None
+
+        return type(self)(
+            CatnapIO(
+                self.io.raw,
+                self.io.treenodes,
+                self.io.connectors,
+                self.io.partners,
+                relabelled,
+            )
+        )
