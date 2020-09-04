@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import NamedTuple, Iterable, Tuple, List, Dict, Union
 from copy import copy
 import datetime as dt
-import math
 
 import numpy as np
 import napari
@@ -187,12 +186,12 @@ class PreRenderer(TransformerMixin):
         return vecs
 
     def _skeleton_vectors(self) -> np.ndarray:
-        tns = self.io.treenodes.rename(columns={"id": "child"})
+        tns = self.io.treenodes.rename(columns={"treenode_id": "child_id"})
         merged = pd.merge(
             tns,
-            tns[~tns.parent.isna()],
-            left_on="child",
-            right_on="parent",
+            tns[~tns.parent_id.isna()],
+            left_on="child_id",
+            right_on="parent_id",
             suffixes=("_child", "_parent"),
         )
         child_points = merged[["z_child", "y_child", "x_child"]].rename(
@@ -334,11 +333,11 @@ class CatnapViewer(TransformerMixin):
         )
         offset = MathDict({d: v for d, v in zip(dims, self.io.raw.offset) if d in vals})
         args = (vals - offset) / resolution
-        return self.jump_to_px(**math.round(args))
+        self.jump_to_px(**round(args))
 
     def jump_to_px(self, z=None, y=None, x=None):
         """Move the viewer to the given voxel coordinates in the raw data.
 
         If any dimension is not given, it will be kept the same.
         """
-        return self._navigator.move_to(x, y, z)
+        self._navigator.move_to(x, y, z)

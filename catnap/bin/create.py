@@ -8,7 +8,7 @@ import numpy as np
 import h5py
 from catpy import CatmaidClient
 
-from .utils import parse_hdf5_path, parse_tuple, setup_logging
+from .utils import parse_hdf5_path, parse_tuple, setup_logging_argv, add_verbosity
 from .. import Catmaid, CatnapIO, Image
 from ..utils import DEFAULT_OFFSET, DEFAULT_RESOLUTION
 
@@ -28,8 +28,7 @@ def add_catmaid_args(parser: ArgumentParser):
     )
 
 
-def parse_args(args=None):
-    parser = ArgumentParser()
+def add_arguments(parser: ArgumentParser):
     parser.add_argument(
         "input",
         type=parse_hdf5_path,
@@ -65,9 +64,13 @@ def parse_args(args=None):
         help="Radius of the label seed squares placed at each treenode, in px",
     )
     add_catmaid_args(parser)
-    parser.add_argument(
-        "-v", "--verbose", action="count", help="Increase logging verbosity"
-    )
+    return parser
+
+
+def parse_args(args=None):
+    parser = ArgumentParser()
+    add_arguments(parser)
+    add_verbosity(parser)
     return parser.parse_args(args)
 
 
@@ -107,7 +110,7 @@ def hdf5_to_image(fpath, ds, offset=None, resolution=None):
 
 
 def main():
-    setup_logging()
+    setup_logging_argv()
     args = parse_args()
 
     raw_fpath, raw_name = args.input

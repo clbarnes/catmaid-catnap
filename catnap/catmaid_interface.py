@@ -26,16 +26,16 @@ def treenode_table(response):
     df = lol_to_df(
         response,
         [
-            "id",
-            "parent",
+            "treenode_id",
+            "parent_id",
             "x",
             "y",
             "z",
             "confidence",
             "radius",
-            "skeleton",
+            "skeleton_id",
             "edit_time",
-            "user",
+            "user_id",
         ],
         [
             np.uint64,
@@ -50,7 +50,7 @@ def treenode_table(response):
             np.uint64,
         ],
     )
-    df.index = df.id
+    # df.index = df.treenode_id
     return df
 
 
@@ -58,7 +58,7 @@ def connector_node_table(response):
     edit_time_dtype = None
     df = lol_to_df(
         response,
-        ["id", "x", "y", "z", "confidence", "edit_time", "user"],
+        ["connector_id", "x", "y", "z", "confidence", "edit_time", "user_id"],
         [
             np.uint64,
             np.float64,
@@ -69,24 +69,26 @@ def connector_node_table(response):
             np.uint64,
         ],
     )
-    # df.index = df.id
     return df
 
 
 def merge_node_tables(dfs: Sequence[pd.DataFrame], drop_subset=None):
     merged = pd.concat(dfs, ignore_index=True)
     deduped = merged.drop_duplicates(subset=drop_subset)
-    if len(np.unique(deduped.id)) == len(deduped.id):
-        deduped.index = deduped.id
     return deduped
 
 
 def merge_treenode_tables(dfs: Sequence[pd.DataFrame]):
-    return merge_node_tables(dfs, ["id", "skeleton"])
+    df = merge_node_tables(dfs, ["treenode_id", "skeleton_id"])
+    # if len(df.treenode_id) == len(np.unique(df.treenode_id)):
+    #     df.index = df.treenode_id
+    # else:
+    #     raise ValueError("Resulting treenode table does not have unique rows")
+    return df
 
 
 def merge_connector_tables(dfs: Sequence[pd.DataFrame]):
-    return merge_node_tables(dfs, ["id"])
+    return merge_node_tables(dfs, ["connector_id"])
 
 
 @dataclass
@@ -179,7 +181,7 @@ class Catmaid(CatmaidClientApplication):
             return tn_df, conn_df
 
         # node limit reached
-        logger.warning("Splitting bbox into %s", splits)
+        logger.info("Splitting bbox into %s", splits)
         tn_dfs = []
         conn_dfs: List[pd.DataFrame] = []
         for sub_bb in bbox.split(*splits):

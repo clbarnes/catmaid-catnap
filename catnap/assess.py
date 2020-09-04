@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Iterable, Iterator
 from itertools import combinations
+import logging
 
 import pandas as pd
 import numpy as np
@@ -16,8 +17,12 @@ from .io import (
 )
 from .utils import LocationOfInterest
 
+logger = logging.getLogger(__name__)
+
 
 class FalseMerge(LocationOfInterest):
+    _headers = ("label", "skeleton1", "skeleton2") + LocationOfInterest._headers
+
     def __init__(self, label: int, skel1: int, skel2: int, location):
         self.label = label
         self.skel1 = skel1
@@ -29,8 +34,8 @@ class FalseMerge(LocationOfInterest):
         cls, label: int, skel1: int, skel2: int, treenodes
     ) -> FalseMerge:
         dims = ["z", "y", "x"]
-        tns1 = treenodes[treenodes["skeleton"] == skel1][dims]
-        tns2 = treenodes[treenodes["skeleton"] == skel2][dims]
+        tns1 = treenodes[treenodes["skeleton_id"] == skel1][dims]
+        tns2 = treenodes[treenodes["skeleton_id"] == skel2][dims]
         sq = cdist(tns1, tns2)
         idx1, idx2 = np.unravel_index(np.argmin(sq), sq.shape)
         loc = (tns1.iloc[idx1][dims] + tns2.iloc[idx2][dims]) / 2
@@ -45,22 +50,33 @@ class FalseMerge(LocationOfInterest):
                 continue
             yield cls.from_skeletons(label, skel1, skel2, treenodes)
 
-    @staticmethod
-    def to_dataframe(false_merges: Iterable[FalseMerge]):
+    @classmethod
+    def to_dataframe(cls, false_merges: Iterable[FalseMerge]):
         rows = [
             [m.label, m.skel1, m.skel2, m.location[0], m.location[1], m.location[2]]
             for m in false_merges
         ]
-        return pd.DataFrame(
-            rows, columns=["label", "skeleton1", "skeleton2", "z", "y", "x"]
+        return pd.DataFrame(rows, columns=cls._headers)
+
+    def as_row(self, sep=","):
+        return sep.join(
+            [str(self.label), str(self.skel1), str(self.skel2), super().as_row(sep)]
         )
 
 
 class FalseSplit(LocationOfInterest):
+    _headers = (
+        "skeleton",
+        "node1",
+        "node2",
+        "label1",
+        "label2",
+    ) + LocationOfInterest._headers
+
     def __init__(self, skel, node1, node2, label1, label2, location):
         self.skel: int = skel
         self.node1: int = node1
-        self.node2: int = node1
+        self.node2: int = node2
         self.label1: int = label1
         self.label2: int = label2
         super().__init__(location)
@@ -69,22 +85,21 @@ class FalseSplit(LocationOfInterest):
     def from_edges(cls, edges) -> Iterator[FalseSplit]:
         splits = edges[edges["label"] != edges["label_parent"]]
         locs = (
-            splits[["z", "y", "x"]] + splits[["z_parent", "y_parent", "x_parent"]]
+            splits[["z", "y", "x"]].to_numpy()
+            + splits[["z_parent", "y_parent", "x_parent"]].to_numpy()
         ) / 2
-        for edge_row, loc_row in zip(
-            splits.itertuples(index=False), locs.itertuples(index=False),
-        ):
+        for edge_row, zyx in zip(splits.itertuples(index=False), locs,):
             yield cls(
-                edge_row.skeleton,
-                edge_row.id,
-                edge_row.parent,
+                edge_row.skeleton_id,
+                edge_row.treenode_id,
+                edge_row.parent_id,
                 edge_row.label,
                 edge_row.label_parent,
-                np.array(loc_row),
+                zyx,
             )
 
-    @staticmethod
-    def to_dataframe(false_splits: Iterable[FalseSplit]):
+    @classmethod
+    def to_dataframe(cls, false_splits: Iterable[FalseSplit]):
         rows = [
             [
                 m.skel,
@@ -98,9 +113,18 @@ class FalseSplit(LocationOfInterest):
             ]
             for m in false_splits
         ]
-        return pd.DataFrame(
-            rows,
-            columns=["skeleton", "node1", "node2", "label1", "label2", "z", "y", "x"],
+        return pd.DataFrame(rows, columns=cls._headers)
+
+    def as_row(self, sep=","):
+        return sep.join(
+            [
+                str(self.skel),
+                str(self.node1),
+                str(self.node2),
+                str(self.label1),
+                str(self.label2),
+                super().as_row(sep),
+            ]
         )
 
 
@@ -130,7 +154,7 @@ class Assessor(TransformerMixin):
         tns = self.internal_treenodes
         for label in np.unique(tns["label"]):
             these = tns[tns["label"] == label]
-            skels = np.unique(these["skeleton"])
+            skels = np.unique(these["skeleton_id"])
             yield from FalseMerge.from_n_skeletons(label, skels, these)
 
     def _prepare_treenodes(self) -> pd.DataFrame:
@@ -150,16 +174,16 @@ class Assessor(TransformerMixin):
             tns,
             tns,
             how="left",
-            left_on="parent",
-            right_on="id",
+            left_on="parent_id",
+            right_on="treenode_id",
             suffixes=(None, "_parent"),
         )
-        merged.drop(columns=["parent_parent"], inplace=True)
+        merged.drop(columns=["parent_id_parent"], inplace=True)
         return deserialize_treenodes(merged)
 
     def _child_labels(self, merged_treenodes) -> pd.array:
         in_raw = merged_treenodes["in_raw"]
-        px_locs = merged_treenodes[in_raw][["z_px", "y_px", "x_px"]].to_numpy()
+        px_locs = np.asarray(merged_treenodes[in_raw][["z_px", "y_px", "x_px"]], int)
         child_labels = self.io.labels.array[tuple(px_locs.T)]
         all_child = pd.array(np.full(len(merged_treenodes), np.nan), dtype="UInt64")
         all_child[in_raw] = child_labels
@@ -180,6 +204,7 @@ class Assessor(TransformerMixin):
 
     def relabel(self) -> Assessor:
         if self.io.labels is not None:
+            logger.info("Relabelling volume")
             lbl = self.io.labels
             first_zero = (lbl.array == 0).argmax()
             relabelled = measure.label(lbl.array) + 1

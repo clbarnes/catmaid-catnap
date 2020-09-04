@@ -1,3 +1,6 @@
+from typing import Optional, Tuple
+from abc import abstractmethod
+
 from coordinates import spaced_coordinate
 import pandas as pd
 import numpy as np
@@ -24,6 +27,25 @@ def default(arg, default):
     return arg
 
 
-class LocationOfInterest:
+class CsvRow:
+    _headers: Optional[Tuple[str, ...]] = None
+
+    @classmethod
+    def header(cls, sep=","):
+        if cls._headers is None:
+            return None
+        return sep.join(cls._headers)
+
+    @abstractmethod
+    def as_row(self, sep=","):
+        pass
+
+
+class LocationOfInterest(CsvRow):
+    _headers = ("z", "y", "x")
+
     def __init__(self, location: np.ndarray):
         self.location = location
+
+    def as_row(self, sep=","):
+        return sep.join(str(i) for i in self.location)

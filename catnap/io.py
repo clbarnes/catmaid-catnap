@@ -96,16 +96,26 @@ class Image(TransformerMixin):
 
 def serialize_treenodes(tns: pd.DataFrame):
     tns = tns.copy()
-    tns["parent"] = np.array(tns["parent"].fillna(0), dtype=int)
+    tns["parent_id"] = np.array(tns["parent_id"].fillna(0), dtype=int)
     return tns
 
 
 def deserialize_treenodes(tns: pd.DataFrame):
     tns = tns.copy()
-    ids = pd.array(tns["parent"], dtype="UInt64")
+    ids = pd.array(tns["parent_id"], dtype="UInt64")
     ids[ids == 0] = pd.NA
-    tns["parent"] = ids
+    tns["parent_id"] = ids
     return tns
+
+
+def remove_single_nodes(treenodes: pd.DataFrame):
+    """Remove all nodes belonging to skeletons with only 1 treenode in the dataframe"""
+    skids, counts = np.unique(treenodes["skeleton_id"], return_counts=True)
+    single_tns = skids[counts == 1]
+    to_drop = np.zeros(len(treenodes), bool)
+    for skid in single_tns:
+        to_drop |= treenodes["skeleton_id"] == skid
+    return treenodes.loc[~to_drop].copy()
 
 
 class CatnapIO(TransformerMixin):
@@ -120,8 +130,12 @@ class CatnapIO(TransformerMixin):
         labels: Optional[Image] = None,
     ):
         self.raw: Image = raw
-        self.treenodes = trim_cols(
-            treenodes, ["id", "parent", "skeleton", "z", "y", "x"], "treenode"
+        self.treenodes = remove_single_nodes(
+            trim_cols(
+                treenodes,
+                ["treenode_id", "parent_id", "skeleton_id", "z", "y", "x"],
+                "treenode",
+            )
         )
         self.connectors = trim_cols(
             connectors, ["connector_id", "z", "y", "x"], "connector"
@@ -173,14 +187,16 @@ class CatnapIO(TransformerMixin):
 
         extents = [CoordZYX({d: x for d, x in zip(dims, ext)}) for ext in raw.extents()]
         logger.info("Fetching annotations from CATMAID")
+        raw_conns: pd.DataFrame
         treenodes, raw_conns = catmaid.nodes_in_bbox(Bbox.from_start_stop(*extents))
         connectors, partners = ConnectorDetail.to_connector_partners_df(
             tqdm(
-                catmaid.connector_detail_many(raw_conns.id),
+                catmaid.connector_detail_many(raw_conns.connector_id),
                 desc="connector details",
-                total=len(raw_conns.id),
+                total=len(raw_conns.connector_id),
             )
         )
+
         return cls(raw, treenodes, connectors, partners, labels)
 
     def set_labels(self, labels: Optional[Image]) -> bool:
@@ -217,7 +233,7 @@ class CatnapIO(TransformerMixin):
         idxs = self.coords_in_raw(zyx_world)
         zyx_px = ((zyx_world - labels.offset) / labels.resolution).astype(int)
 
-        skels = tns["skeleton"][idxs]
+        skels = tns["skeleton_id"][idxs]
         locs = zyx_px[idxs]
 
         skid_to_label: Dict[int, int] = {
@@ -235,7 +251,9 @@ class CatnapIO(TransformerMixin):
         return labels
 
     def join_tables(self):
-        tns = self.treenodes.rename(columns={"id": "treenode_id"})
-        conns = self.connectors.rename(columns={"id": "connector_id"})
-        merged = pd.merge(tns, self.partners, on="treenode_id", suffixes=("_t", "_tc"),)
-        return pd.merge(merged, conns, on="connector_id", suffixes=("_t", "_c"))
+        merged = pd.merge(
+            self.treenodes, self.partners, on="treenode_id", suffixes=("_t", "_tc"),
+        )
+        return pd.merge(
+            merged, self.connectors, on="connector_id", suffixes=("_t", "_c")
+        )

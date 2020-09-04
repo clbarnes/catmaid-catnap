@@ -42,6 +42,7 @@ setup(
         "console_scripts": [
             "catnap=catnap.bin.view:main",
             "catnap-create=catnap.bin.create:main",
+            "catnap-assess=catnap.bin.assess:main",
         ]
     },
     extras_require={},

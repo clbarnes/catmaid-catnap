@@ -1,6 +1,6 @@
 numpy
 napari[all]
-catpy
+catpy>=2020.9.3
 pandas
 coordinates
 tqdm

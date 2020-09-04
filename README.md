@@ -33,6 +33,18 @@ Open a napari window viewing the pre-formatted data for label annotation.
 catnap catnap_format.hdf5
 ```
 
+See `catnap --help` for more information.
+
+#### Assessment
+
+Write CSVs of false splits and merges.
+
+```sh
+catnap-assess catnap_format.hdf5 --false-split splits.csv --false-merge merges.csv
+```
+
+See `catnap-assess --help` for more information.
+
 ### Library
 
 Assuming you have a chunk of image data as a numpy array in ZYX,

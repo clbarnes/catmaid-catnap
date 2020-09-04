@@ -3,6 +3,7 @@ import logging
 from typing import Tuple, Optional
 import re
 from pathlib import Path
+from argparse import ArgumentParser
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def parse_hdf5_path(
     return fpath, internal
 
 
-def setup_logging(args=None, strip=False):
+def setup_logging_argv(args=None, strip=False):
     if args is None:
         args = sys.argv[1:]
 
@@ -55,8 +56,17 @@ def setup_logging(args=None, strip=False):
         4: (logging.DEBUG, logging.DEBUG),
     }.get(counter, (logging.DEBUG, logging.DEBUG))
 
-    logging.basicConfig(level=root_lvl)
+    setup_logging(root_lvl, dep_level)
+    logger.debug("Set verbosity to %s", counter)
 
+    if strip:
+        return out
+    else:
+        return args
+
+
+def setup_logging(root_lvl, dep_lvl):
+    logging.basicConfig(level=root_lvl)
     for name in [
         "requests",
         "urllib3",
@@ -66,11 +76,10 @@ def setup_logging(args=None, strip=False):
         "traitlets",
         "parso",
     ]:
-        logging.getLogger(name).setLevel(dep_level)
+        logging.getLogger(name).setLevel(dep_lvl)
 
-    logger.debug("Set verbosity to %s", counter)
 
-    if strip:
-        return out
-    else:
-        return args
+def add_verbosity(parser: ArgumentParser):
+    parser.add_argument(
+        "-v", "--verbose", action="count", help="Increase logging verbosity"
+    )
