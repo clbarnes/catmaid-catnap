@@ -19,25 +19,116 @@ For more complex tasks, consider
 
 Create a file for use with catnap using an existing raw image dataset, fetching annotation data from CATMAID, and creating a volume for labels with seed labels around treenodes.
 
+```_catnap_create
+usage: catnap-create [-h] [-o OFFSET] [-r RESOLUTION] [--label LABEL]
+                     [-s SEED_RADIUS] [--base-url BASE_URL]
+                     [--project-id PROJECT_ID] [--token TOKEN]
+                     [--auth-name AUTH_NAME] [--auth-pass AUTH_PASS]
+                     [-c CREDENTIALS] [-v]
+                     input output
+
+positional arguments:
+  input                 Path to HDF5 dataset containing raw data, in the form
+                        '{file_path}:{dataset_path}'
+  output                Path to HDF5 group to write raw, annotation, and label
+                        data, in the form'{file_path}:{group_path}'. If the
+                        group path is not given, it will default to the file's
+                        root.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -o OFFSET, --offset OFFSET
+                        Offset, in world units, of the raw data's (0, 0, 0)
+                        from the CATMAID project's (0, 0, 0), in the form
+                        'z,y,x'. Will default to the raw dataset's 'offset'
+                        attribute if applicable, or '0,0,0' otherwise
+  -r RESOLUTION, --resolution RESOLUTION
+                        Size, in word units, of voxels in the raw data, in the
+                        form 'z,y,x'. Will default to the raw dataset's
+                        'resolution' attribute if applicable, or '1,1,1'
+                        otherwise
+  --label LABEL, -l LABEL
+                        If there is existing label data, give it here in the
+                        same format as for 'input'. Offset and resolution are
+                        assumed to be identical to the raw (conflicting
+                        attributes will raise an error).
+  -s SEED_RADIUS, --seed-radius SEED_RADIUS
+                        Radius of the label seed squares placed at each
+                        treenode, in px
+  -v, --verbose         Increase logging verbosity
+
+catmaid connection details:
+  --base-url BASE_URL   Base CATMAID URL to make requests to
+  --project-id PROJECT_ID
+  --token TOKEN         CATMAID user auth token
+  --auth-name AUTH_NAME
+                        Username for HTTP auth, if necessary
+  --auth-pass AUTH_PASS
+                        Password for HTTP auth, if necessary
+  -c CREDENTIALS, --credentials CREDENTIALS
+                        Path to JSON file containing credentials (command line
+                        arguments will take precedence)
+```
+
+e.g.
+
 ```sh
 catnap-create existing_data.hdf5:/raw catnap_format.hdf5 --credentials my_credentials.json --seed-radius=3
 ```
-
-See `catnap-create --help` for more information.
 
 #### Annotation
 
 Open a napari window viewing the pre-formatted data for label annotation.
 
+```_catnap
+usage: catnap [-h] [-v] input
+
+positional arguments:
+  input          Path to HDF5 group containing catnap-formatted data, in the
+                 form'{file_path}:{group_path}'. If the group path is not
+                 given, it will default to the file's root.
+
+optional arguments:
+  -h, --help     show this help message and exit
+  -v, --verbose  Increase logging verbosity
+```
+
+e.g.
+
 ```sh
 catnap catnap_format.hdf5
 ```
 
-See `catnap --help` for more information.
-
 #### Assessment
 
 Write CSVs of false splits and merges.
+
+```_catnap_assess
+usage: catnap-assess [-h] [-v] [-m FALSE_MERGE] [-s FALSE_SPLIT] [-r] input
+
+Merges are assessed before splits regardless of argument order.
+
+positional arguments:
+  input                 Path to HDF5 group containing catnap-formatted data,
+                        in the form'{file_path}:{group_path}'. If the group
+                        path is not given, it will default to the file's root.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --verbose         Increase logging verbosity
+  -m FALSE_MERGE, --false-merge FALSE_MERGE
+                        Assess false merges and write to CSV file. If '-' is
+                        given, write to stdout.
+  -s FALSE_SPLIT, --false-split FALSE_SPLIT
+                        Assess false splits and write to CSV file. If '-' is
+                        given, write to stdout.
+  -r, --relabel         Assign each connected component a new label. Useful to
+                        assess whether there are skeletons which correctly
+                        share labels around their treenodes, but those
+                        labelled regions are not contiguous.
+```
+
+e.g.
 
 ```sh
 catnap-assess catnap_format.hdf5 --false-split splits.csv --false-merge merges.csv
