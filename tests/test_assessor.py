@@ -1,5 +1,5 @@
 from catnap import CatnapIO
-from catnap.assessor import Assessor
+from catnap.assess import Assessor
 
 
 def test_false_merges(catnap_io: CatnapIO):

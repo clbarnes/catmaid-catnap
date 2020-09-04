@@ -52,9 +52,9 @@ def paths_to_tn_table(paths: List[List[Tuple[float, float, float]]]) -> pd.DataF
             prev_tnid = tn_id
     return pd.DataFrame.from_dict(
         {
-            "id": np.array(tnids, np.uint64),
-            "parent": pd.array(parent_ids, "UInt64"),
-            "skeleton": np.array(skids, np.uint64),
+            "treenode_id": np.array(tnids, np.uint64),
+            "parent_id": pd.array(parent_ids, "UInt64"),
+            "skeleton_id": np.array(skids, np.uint64),
             "z": np.array(zs),
             "y": np.array(ys),
             "x": np.array(xs),
