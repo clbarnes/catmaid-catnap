@@ -18,6 +18,11 @@ class Navigator:
         yield d
         camera.set_state(d)
 
+    def location(self):
+        z = self.viewer.dims.point[0]
+        x, y = self.viewer.window.qt_viewer.view.camera.get_state()["rect"].center
+        return z, y, x
+
     def move_to(self, x=None, y=None, z=None, scale=1) -> Navigator:
         if z is not None:
             self.viewer.dims.set_point(0, z)

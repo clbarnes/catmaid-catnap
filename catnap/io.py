@@ -44,7 +44,7 @@ class TransformerMixin:
                 np.asarray(px_coords, dtype=np.float64) * self.resolution + self.offset
             )
         else:
-            return getattr(self, self._transformer_attr).world_to_px(px_coords)
+            return getattr(self, self._transformer_attr).px_to_world(px_coords)
 
 
 class Image(TransformerMixin):
