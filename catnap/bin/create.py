@@ -54,8 +54,18 @@ def add_arguments(parser: ArgumentParser):
         type=parse_tuple,
         help="Size, in word units, of voxels in the raw data, in the form 'z,y,x'. Will default to the raw dataset's 'resolution' attribute if applicable, or '1,1,1' otherwise",
     )
-    parser.add_argument("-f", "--force", action="store_true", help="Force usage of the given offset and arguments, even if the dataset has its own which do not match")
-    parser.add_argument("-t", "--transpose-attrs", action="store_true", help="Reverse offset and resolution attributes read from the source (may be necessary in some N5 datasets")
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force usage of the given offset and arguments, even if the dataset has its own which do not match",
+    )
+    parser.add_argument(
+        "-t",
+        "--transpose-attrs",
+        action="store_true",
+        help="Reverse offset and resolution attributes read from the source (may be necessary in some N5 datasets",
+    )
     parser.add_argument(
         "--label",
         "-l",
@@ -102,7 +112,9 @@ def same_arrs(it: Iterable, default=None, force=False):
         return last
 
 
-def zarr_to_image(fpath, ds=None, offset=None, resolution=None, force=False, transpose=False):
+def zarr_to_image(
+    fpath, ds=None, offset=None, resolution=None, force=False, transpose=False
+):
     import zarr
 
     arr_or_group = zarr.open(fpath, "r")
@@ -159,7 +171,9 @@ def rev(arr):
         return arr[::-1]
 
 
-def hdf5_to_image(fpath, ds, offset=None, resolution=None, force=False, transpose=False):
+def hdf5_to_image(
+    fpath, ds, offset=None, resolution=None, force=False, transpose=False
+):
     with h5py.File(fpath, "r") as f:
         ds = f[ds]
         this_off = ds.attrs.get("offset")
@@ -209,13 +223,27 @@ def main():
     args = parse_args()
 
     raw_fpath, raw_name = args.input
-    raw = read_image(raw_fpath, raw_name, args.offset, args.resolution, args.force, args.transpose_attrs)
+    raw = read_image(
+        raw_fpath,
+        raw_name,
+        args.offset,
+        args.resolution,
+        args.force,
+        args.transpose_attrs,
+    )
 
     if args.label is not None:
         lab_fpath, lab_name = args.label
         if lab_fpath is None:
             lab_fpath = raw_fpath
-        label = read_image(lab_fpath, lab_name, raw.offset, raw.resolution, args.force, args.transpose_attrs)
+        label = read_image(
+            lab_fpath,
+            lab_name,
+            raw.offset,
+            raw.resolution,
+            args.force,
+            args.transpose_attrs,
+        )
     else:
         label = None
 
