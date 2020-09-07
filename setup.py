@@ -37,6 +37,7 @@ setup(
         "tqdm",
         "scikit-image",
         "pandas",
+        "StrEnum",
     ],
     entry_points={
         "console_scripts": [

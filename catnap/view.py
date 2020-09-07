@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import NamedTuple, Iterable, Tuple, List, Dict, Union
+from typing import NamedTuple, Iterable, Tuple, List, Dict, Union, Optional
 from copy import copy
 import datetime as dt
+import logging
 
 import numpy as np
 import napari
@@ -11,6 +12,9 @@ from coordinates import MathDict
 
 from .io import CatnapIO, Image, TransformerMixin
 from .navigator import Navigator
+from .utils import Viewable
+
+logger = logging.getLogger(__name__)
 
 DIMS = ["z", "y", "x"]
 
@@ -303,6 +307,55 @@ class CatnapViewer(TransformerMixin):
 
         self._keybinds()
         self.viewer.update_console({self._var_name: self})
+
+    def location_px(self):
+        """Center of the viewport, in ZYX order"""
+        return Navigator(self.viewer).location()
+
+    def location(self):
+        """Center of the viewport, in ZYX order"""
+        px = self.location_px()
+        return self.px_to_world(px)
+
+    def jump_to_obj(self, obj_id: int, obj_type: Optional[Viewable] = None):
+        """If obj_type is not given, try treenode -> connector -> skeleton"""
+        if obj_type is None:
+            if np.any(obj_id == self.io.treenodes["treenode_id"]):
+                obj_type = Viewable.TREENODE
+            elif np.any(obj_id == self.io.connectors["connector_id"]):
+                obj_type = Viewable.CONNECTOR
+            elif np.any(obj_id == self.io.treenodes["skeleton_id"]):
+                obj_type = Viewable.SKELETON
+            else:
+                raise ValueError("Object ID not found in treenodes, connectors or skeletons: %s", obj_id)
+            logger.info("Inferred that object with id %s is a %s", obj_id, obj_type)
+
+        if obj_type == Viewable.TREENODE:
+            tns = self.io.treenodes
+            rows = tns[tns["treenode_id"] == obj_id]
+            if len(rows) != 1:
+                raise ValueError("No unique treenode with ID %s, found %s", obj_id, len(rows))
+            return self.jump_to(*tuple(rows[["z", "y", "x"]].iloc[0]))
+        elif obj_type == Viewable.CONNECTOR:
+            conns = self.io.connectors
+            rows = conns[conns["connector_id"] == obj_id]
+            if len(rows) != 1:
+                raise ValueError("No unique connector with ID %s, found %s", obj_id, len(rows))
+            return self.jump_to(*tuple(rows[["z", "y", "x"]].iloc[0]))
+        elif obj_type != Viewable.SKELETON:
+            raise ValueError("Unknown object type: %s", obj_type)
+
+        # must be skeleton
+        tns = self.io.treenodes
+        rows = tns[tns["skeleton_id"] == obj_id][["z", "y", "x"]].to_numpy()
+        if len(rows) == 0:
+            raise ValueError("No treenodes belonging to skeleton %s", obj_id)
+        elif len(rows) == 1:
+            return self.jump_to(*tuple(rows[0]))
+        loc = self.location()
+        dists = np.linalg.norm(rows - loc, axis=1)
+        idx = np.argmin(dists)
+        return self.jump_to(*rows[idx])
 
     def export_labels(self, fpath, name=None, with_source=False):
         """Save label array.

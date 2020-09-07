@@ -3,6 +3,7 @@ from .catmaid_interface import Catmaid
 from .io import CatnapIO, Image
 from .view import CatnapViewer, PreRenderer
 from .assess import Assessor
+from .utils import Viewable
 from napari import gui_qt
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "PreRenderer",
     "gui_qt",
     "Assessor",
+    "Viewable",
 ]

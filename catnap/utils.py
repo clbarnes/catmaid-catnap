@@ -1,6 +1,8 @@
 from typing import Optional, Tuple
 from abc import abstractmethod
 
+from strenum import StrEnum
+from enum import auto
 from coordinates import spaced_coordinate
 import pandas as pd
 import numpy as np
@@ -49,3 +51,9 @@ class LocationOfInterest(CsvRow):
 
     def as_row(self, sep=","):
         return sep.join(str(i) for i in self.location)
+
+
+class Viewable(StrEnum):
+    TREENODE = auto()
+    CONNECTOR = auto()
+    SKELETON = auto()
