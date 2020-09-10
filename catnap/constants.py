@@ -1,0 +1,3 @@
+DEFAULT_OFFSET = (0, 0, 0)
+DEFAULT_RESOLUTION = (1, 1, 1)
+DEFAULT_DIMS = ("z", "y", "x")

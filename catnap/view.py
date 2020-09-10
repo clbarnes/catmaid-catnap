@@ -321,26 +321,33 @@ class CatnapViewer(TransformerMixin):
         """If obj_type is not given, try treenode -> connector -> skeleton"""
         if obj_type is None:
             if np.any(obj_id == self.io.treenodes["treenode_id"]):
-                obj_type = Viewable.TREENODE
+                obj_type = Viewable.TREENODE  # type: ignore
             elif np.any(obj_id == self.io.connectors["connector_id"]):
-                obj_type = Viewable.CONNECTOR
+                obj_type = Viewable.CONNECTOR  # type: ignore
             elif np.any(obj_id == self.io.treenodes["skeleton_id"]):
-                obj_type = Viewable.SKELETON
+                obj_type = Viewable.SKELETON  # type: ignore
             else:
-                raise ValueError("Object ID not found in treenodes, connectors or skeletons: %s", obj_id)
+                raise ValueError(
+                    "Object ID not found in treenodes, connectors or skeletons: %s",
+                    obj_id,
+                )
             logger.info("Inferred that object with id %s is a %s", obj_id, obj_type)
 
         if obj_type == Viewable.TREENODE:
             tns = self.io.treenodes
             rows = tns[tns["treenode_id"] == obj_id]
             if len(rows) != 1:
-                raise ValueError("No unique treenode with ID %s, found %s", obj_id, len(rows))
+                raise ValueError(
+                    "No unique treenode with ID %s, found %s", obj_id, len(rows)
+                )
             return self.jump_to(*tuple(rows[["z", "y", "x"]].iloc[0]))
         elif obj_type == Viewable.CONNECTOR:
             conns = self.io.connectors
             rows = conns[conns["connector_id"] == obj_id]
             if len(rows) != 1:
-                raise ValueError("No unique connector with ID %s, found %s", obj_id, len(rows))
+                raise ValueError(
+                    "No unique connector with ID %s, found %s", obj_id, len(rows)
+                )
             return self.jump_to(*tuple(rows[["z", "y", "x"]].iloc[0]))
         elif obj_type != Viewable.SKELETON:
             raise ValueError("Unknown object type: %s", obj_type)

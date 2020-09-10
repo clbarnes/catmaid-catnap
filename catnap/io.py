@@ -163,7 +163,7 @@ class CatnapIO(TransformerMixin):
                 self.labels.to_hdf5(f, f"{prefix}/labels")
 
     @classmethod
-    def from_hdf5(cls, fpath, gname=""):
+    def from_hdf5(cls, fpath, gname="", ignore_labels=False):
 
         prefix = f"{gname}/tables"
         with pd.HDFStore(fpath, "r") as f:
@@ -174,10 +174,12 @@ class CatnapIO(TransformerMixin):
         prefix = f"{gname}/volumes"
         with h5py.File(fpath, "r") as f:
             raw = Image.from_hdf5(f[f"{prefix}/raw"])
-            try:
-                labels = Image.from_hdf5(f[f"{prefix}/labels"])
-            except KeyError:
-                labels = None
+            labels = None
+            if not ignore_labels:
+                try:
+                    labels = Image.from_hdf5(f[f"{prefix}/labels"])
+                except KeyError:
+                    pass
 
         return cls(raw, treenodes, connectors, partners, labels)
 

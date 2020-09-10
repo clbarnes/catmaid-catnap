@@ -1,9 +1,15 @@
 import sys
 import logging
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union, Iterable
 import re
 from pathlib import Path
 from argparse import ArgumentParser
+
+from strenum import StrEnum, auto
+import numpy as np
+
+from ..io import Image
+from ..constants import DEFAULT_OFFSET, DEFAULT_RESOLUTION
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +20,132 @@ def parse_tuple(s, fn=float, dims=3) -> Tuple:
     if dims is not None and len(t) != dims:
         raise ValueError(f"Expected length {dims} tuple but got {len(t)}: '{s}'")
     return t
+
+
+class StoreFormat(StrEnum):
+    HDF5 = auto()
+    ZARR = auto()
+    N5 = auto()
+
+    @classmethod
+    def from_path_name(cls, fpath: Path, name: str):
+        """Get type of existing store"""
+        p = Path(fpath)
+        if p.is_file():
+            logger.debug("Path is a file, assuming HDF5: %s", fpath)
+            return cls.HDF5
+        elif not p.is_dir():
+            raise FileNotFoundError("No file or directory found at %s", p)
+
+        # is dir - does this handle symlinks?
+        # TODO: check metadata files
+        ext = p.suffix.lower()
+        if ext == ".n5":
+            return cls.N5
+        if ext in (".zr", ".zarr") or not name:
+            return cls.ZARR
+
+        raise ValueError("Could not infer dataset type from path")
+
+
+SliceItem = Union[slice, int]
+Slicing = Union[SliceItem, Tuple[SliceItem, ...]]
+
+
+def parse_slicing_part(s: str) -> SliceItem:
+    if not s:
+        return slice(None)
+    if s == "...":
+        return Ellipsis  # type: ignore
+    try:
+        return int(s)
+    except ValueError:
+        pass
+
+    if "+" in s:
+        start, length = [int(i) if i else None for i in s.split("+")]
+        if length is not None and length < 1:
+            raise ValueError("Size must be at least 1")
+        if start is None or length is None:
+            stop = length
+        else:
+            stop = start + length
+    elif ">" in s:
+        start, stop = [int(i) if i else None for i in s.split(">")]
+    else:
+        raise ValueError("Don't know how to parse into slicing: '%s'", s)
+    return slice(start, stop)
+
+
+def parse_slicing(s: str) -> Slicing:
+    return tuple(parse_slicing_part(p) for p in strip_whitespace(s).split(","))
+
+
+def strip_whitespace(s):
+    return "".join(s.split())
+
+
+class DataAddress:
+    slice_parse_desc = (
+        "Dimensions are separated with a comma, and indices are in pixel space. "
+        "For each dimension, you can use '{value}' for a single index, "
+        "or '{start}>{stop}', or '{start}+{size}', or leave empty to select entire dimension. "
+        "{start} and {stop} can be negative. "
+        "Empty {start} starts at 0. Empty {stop} or {size} continues to the end. "
+        "Ellipses can be used to fill out any number of dimensions. "
+        "If there are fewer indices than there are dimensions, "
+        "there is an implicit trailing ellipsis. "
+        "For example, '1>-5' maps to `slice(1, -5)`; '5+10' maps to `slice(5, 15)`; "
+        "'5,,3>-10,...,20+30' is equivalent to `array[5, :, 3:-10, ..., 20:50]`. "
+        "Command line arguments including slices should be quoted. "
+        "Some storage backends may not support all numpy-like slicing operations."
+    )
+
+    def __init__(self, file_path=None, object_name=None, slicing=None):
+        self.file_path: Optional[Path] = Path(
+            file_path
+        ) if file_path is not None else None
+        self.object_name: Optional[str] = object_name
+        self.slicing: Optional[Slicing] = slicing
+
+    @classmethod
+    def from_str(
+        cls,
+        s: str,
+        sep=":",
+        no_slice=False,
+        file_path=None,
+        object_name=None,
+        slicing=None,
+    ):
+        """file_path, object_name, and slicing are defaults if not given in str"""
+        logger.debug("Parsing HDF5 file path and internal path from %s", s)
+        parts = s.split(sep)
+        fpath = None
+        oname = None
+        sl = None
+
+        if len(parts) >= 1 and parts[0]:
+            fpath = Path(parts[0])
+        if len(parts) >= 2 and parts[1]:
+            oname = parts[1]
+        if len(parts) == 3 and parts[2]:
+            sl = parse_slicing(parts[2])
+        if len(parts) > (2 if no_slice else 3):
+            raise ValueError("Too many components in data address '%s'", s)
+
+        return cls(fpath, oname, sl).defaults(file_path, object_name, slicing)
+
+    def defaults(self, file_path=None, object_name=None, slicing=None):
+        fp = file_path if self.file_path is None else self.file_path
+        on = object_name if self.object_name is None else self.object_name
+        sl = slicing if self.slicing is None else self.slicing
+        return type(self)(fp, on, sl)
+
+    def get_format(self) -> StoreFormat:
+        if not self.file_path:
+            raise ValueError("Requires file path")
+        return StoreFormat.from_path_name(self.file_path, self.object_name)  # type: ignore
 
 
 def parse_hdf5_path(
@@ -83,3 +215,181 @@ def add_verbosity(parser: ArgumentParser):
     parser.add_argument(
         "-v", "--verbose", action="count", help="Increase logging verbosity"
     )
+
+
+def slicing_offset(slicing, shape):
+    if slicing is None:
+        slicing = Ellipsis
+    slicing = np.index_exp[slicing]
+    ellipsis_count = sum(sl == Ellipsis for sl in slicing)
+
+    if ellipsis_count > 1:
+        raise ValueError("More than one ellipsis")
+    elif ellipsis_count == 1:
+        slicing = []
+        for sl in slicing:
+            if sl == Ellipsis:
+                to_add = max(0, len(shape) - len(slicing) + 1)
+                slicing.extend(slice(None) for _ in range(to_add))
+            else:
+                slicing.append(sl)
+        slicing = tuple(slicing)
+    elif ellipsis_count == 0:
+        slicing += tuple(slice(None) for _ in range(len(shape) - len(slicing)))
+
+    if len(slicing) != len(shape):
+        raise ValueError("Could not rectify sizes of slicing and shape")
+
+    offset = []
+    for sl, sh in zip(slicing, shape):
+        if isinstance(sl, int):
+            raise ValueError("Integer slice not accepted")
+        start, stop, step = sl.indices(sh)
+        if step != 1:
+            raise ValueError("Non-trivial steps not accepted")
+        if start >= stop:
+            raise ValueError("Empty slices and negative steps not allowed")
+        offset.append(start)
+
+    return tuple(offset)
+
+
+def rectify_offset_res(ds_res, ds_offset, res, offset, slicing, shape, force):
+    try:
+        new_res = same_arrs([ds_res, res], DEFAULT_RESOLUTION, force)
+        int_offset = (
+            ds_offset + np.array(DEFAULT_RESOLUTION) * slicing_offset(slicing, shape)
+        ).astype(int)
+        new_off = same_arrs([int_offset, offset], DEFAULT_OFFSET, force)
+    except ValueError:
+        raise ValueError(
+            "Mismatch between resolution/ offset in file and explicitly given "
+        )
+    return new_off, new_res
+
+
+def hdf5_to_image(
+    data_address: DataAddress,
+    offset=None,
+    resolution=None,
+    force=False,
+    transpose=False,
+):
+    import h5py
+
+    with h5py.File(data_address.file_path, "r") as f:
+        ds = f[data_address.object_name]
+        shape = ds.shape
+        this_res = ds.attrs.get("resolution")
+        this_off = ds.attrs.get("offset")
+        arr = ds[data_address.slicing]
+
+    if transpose:
+        this_off = rev(this_off)
+        this_res = rev(this_res)
+
+    new_res, new_off = rectify_offset_res(
+        this_res, this_off, resolution, offset, data_address.slicing, shape, force
+    )
+
+    return Image(arr, new_res, new_off)
+
+
+def zarr_to_image(
+    data_address: DataAddress,
+    offset=None,
+    resolution=None,
+    force=False,
+    transpose=False,
+):
+    import zarr
+
+    arr_or_group = zarr.open(data_address.file_path, "r")
+    if data_address.object_name is None:
+        shape = arr_or_group.shape
+        arr = arr_or_group[data_address.slicing]
+    else:
+        ds = arr_or_group[data_address.object_name]
+        shape = ds.shape
+        arr = ds[data_address.slicing]
+    this_off = arr.attrs.get("offset")
+    this_res = arr.attrs.get("resolution")
+
+    if transpose:
+        this_off = rev(this_off)
+        this_res = rev(this_res)
+
+    new_res, new_off = rectify_offset_res(
+        this_res, this_off, resolution, offset, data_address.slicing, shape, force
+    )
+
+    return Image(arr, new_res, new_off)
+
+
+def n5_to_image(
+    data_address: DataAddress,
+    offset=None,
+    resolution=None,
+    force=False,
+    transpose=False,
+):
+    import pyn5
+
+    f = pyn5.File(data_address.file_path, pyn5.Mode.READ_ONLY)
+    ds = f[data_address.object_name]
+    arr = ds[data_address.slicing]
+    shape = ds.shape
+    this_off = arr.attrs.get("offset")
+    this_res = arr.attrs.get("resolution")
+
+    if transpose:
+        this_off = rev(this_off)
+        this_res = rev(this_res)
+
+    new_res, new_off = rectify_offset_res(
+        this_res, this_off, resolution, offset, data_address.slicing, shape, force
+    )
+
+    return Image(arr, new_res, new_off)
+
+
+def read_image(
+    address: DataAddress, offset=None, resolution=None, force=False, transpose=False
+):
+    reader = {
+        StoreFormat.HDF5: hdf5_to_image,
+        StoreFormat.ZARR: zarr_to_image,
+        StoreFormat.N5: n5_to_image,
+    }[StoreFormat.from_path_name(address.file_path, address.object_name)]  # type: ignore
+    return reader(address, offset, resolution, force, transpose)
+
+
+def same_arrs(it: Iterable, default=None, force=False):
+    last = None
+    for item in it:
+        if item is None:
+            continue
+        transformed = np.asarray(item)
+        if last is not None:
+            if not np.allclose(last, transformed):
+                msg = "Items are not the same"
+                if force:
+                    logger.warn(msg)
+                else:
+                    raise ValueError("Items are not the same")
+            if force:
+                return last
+        last = transformed
+
+    if last is None:
+        return default
+    else:
+        return last
+
+
+def rev(arr):
+    """Reverse array-like if not None"""
+    if arr is None:
+        return None
+    else:
+        return arr[::-1]

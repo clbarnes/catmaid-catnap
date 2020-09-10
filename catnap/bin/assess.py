@@ -5,7 +5,7 @@ import logging
 
 from .. import CatnapIO, Assessor
 from ..assess import FalseMerge, FalseSplit
-from .utils import setup_logging_argv, add_verbosity, parse_hdf5_path
+from .utils import setup_logging_argv, add_verbosity, DataAddress, hdf5_to_image
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +24,7 @@ def file_or_stdout(p):
 def add_arguments(parser: ArgumentParser):
     parser.add_argument(
         "input",
-        type=parse_hdf5_path,
-        help="Path to HDF5 group containing catnap-formatted data, in the form'{file_path}:{group_path}'. If the group path is not given, it will default to the file's root.",
+        help="Path to HDF5 group containing catnap-formatted data, in the form '{file_path}:{group_path}'. If the group path is not given, it will default to the file's root.",
     )
     msg = "Assess false {}  and write to CSV file. If '-' is given, write to stdout."
     parser.add_argument("-m", "--false-merge", help=msg.format("merges"))
@@ -35,6 +34,11 @@ def add_arguments(parser: ArgumentParser):
         "--relabel",
         action="store_true",
         help="Assign each connected component a new label. Useful to assess whether there are skeletons which correctly share labels around their treenodes, but those labelled regions are not contiguous.",
+    )
+    parser.add_argument(
+        "-l",
+        "--label",
+        help="Path to HDF5 dataset containing labels, in the form '{file_path}:{group_path}'. Must have compatible resolution and offste with 'input'."
     )
     return parser
 
@@ -47,7 +51,16 @@ def main():
     add_verbosity(parser)
     add_arguments(parser)
     args = parser.parse_args()
-    io = CatnapIO.from_hdf5(args.input[0], args.input[1] or "")
+    inp_add = DataAddress.from_str(args.input, no_slice=True, object_name="/")
+
+    label_given = bool(args.label)
+    io = CatnapIO.from_hdf5(inp_add.file_path, inp_add.object_name, label_given)
+    if label_given:
+        lab_add = DataAddress.from_str(args.label, slicing=...)
+        io.labels = hdf5_to_image(lab_add)
+        if not io.raw.is_compatible(io.labels):
+            raise ValueError("Raw and labels must have same resolution and offset")
+
     assessor = Assessor(io)
     if args.relabel:
         assessor = assessor.relabel()
