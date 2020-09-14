@@ -38,7 +38,7 @@ def add_arguments(parser: ArgumentParser):
     parser.add_argument(
         "-l",
         "--label",
-        help="Path to HDF5 dataset containing labels, in the form '{file_path}:{group_path}'. Must have compatible resolution and offste with 'input'."
+        help="Path to HDF5 dataset containing labels, in the form '{file_path}:{group_path}'. Must have compatible resolution and offset with 'input'.",
     )
     return parser
 
@@ -57,9 +57,7 @@ def main():
     io = CatnapIO.from_hdf5(inp_add.file_path, inp_add.object_name, label_given)
     if label_given:
         lab_add = DataAddress.from_str(args.label, slicing=...)
-        io.labels = hdf5_to_image(lab_add)
-        if not io.raw.is_compatible(io.labels):
-            raise ValueError("Raw and labels must have same resolution and offset")
+        io.set_labels(hdf5_to_image(lab_add))
 
     assessor = Assessor(io)
     if args.relabel:

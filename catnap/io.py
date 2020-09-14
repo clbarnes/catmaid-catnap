@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Optional, List, Dict
 import logging
+import textwrap
 
 import pandas as pd
 import numpy as np
@@ -62,9 +63,9 @@ class Image(TransformerMixin):
         """[[mins], [maxes]]"""
         return np.array([self.offset, self.offset + self.resolution * self.array.shape])
 
-    def to_hdf5(self, f, name, attrs=None):
+    def to_hdf5(self, f, name, mode="a", attrs=None):
         if not isinstance(f, h5py.Group):
-            with h5py.File(f, "w") as f2:
+            with h5py.File(f, mode) as f2:
                 return self.to_hdf5(f2, name)
         ds = f.create_dataset(name, data=self.array, compression="gzip")
         ds.attrs["resolution"] = self.resolution
@@ -75,13 +76,38 @@ class Image(TransformerMixin):
         return ds
 
     def is_compatible(self, other: Image):
-        return (
-            isinstance(other, Image)
-            and self.array.shape == other.array.shape
-            and tuple(self.resolution) == tuple(other.resolution)
-            and tuple(self.offset) == tuple(other.offset)
-            and tuple(self.dims) == tuple(other.dims)
-        )
+        try:
+            self.raise_on_incompatible(other)
+        except ValueError:
+            return False
+        return True
+
+    def raise_on_incompatible(self, other: Image, names=("left", "right")):
+        features = {}
+        if not isinstance(self, Image) or not isinstance(other, Image):
+            features["class"] = (type(self), type(other))
+        if self.array.shape != other.array.shape:
+            features["shape"] = (self.array.shape, other.array.shape)
+        if tuple(self.resolution) != tuple(other.resolution):
+            features["resolution"] = (tuple(self.resolution), tuple(other.resolution))
+        if tuple(self.offset) != tuple(other.offset):
+            features["offset"] = (tuple(self.offset), tuple(other.offset))
+        if tuple(self.dims) != tuple(other.dims):
+            features["dims"] = (tuple(self.dims), tuple(other.dims))
+
+        if not features:
+            return
+
+        left_name, right_name = pad_strs(names)
+
+        lines = []
+        for k, (l_val, r_val) in features.items():
+            lines.append(k)
+            lines.append(f"  {left_name}: {l_val}")
+            lines.append(f"  {right_name}: {r_val}")
+
+        msg = textwrap.indent("\n".join(lines), "  ")
+        raise ValueError("Images not compatible.\n" + msg)
 
     @classmethod
     def from_hdf5(cls, f, name=None):
@@ -92,6 +118,19 @@ class Image(TransformerMixin):
         else:
             with h5py.File(f, "r") as f2:
                 return cls.from_hdf5(f2[name])
+
+    def max_plus_one(self):
+        if not issubclass(self.array.dtype, np.integer):
+            raise TypeError("Array is not of integer subtype")
+        return self.array.data.max() + 1
+
+
+def pad_strs(strs, prefix=True, pad=" "):
+    if len(pad) > 1:
+        raise ValueError("Pad string must be 1 character long")
+
+    length = max(len(s) for s in strs)
+    return [s + pad * (length - len(s)) for s in strs]
 
 
 def serialize_treenodes(tns: pd.DataFrame):
@@ -204,10 +243,7 @@ class CatnapIO(TransformerMixin):
     def set_labels(self, labels: Optional[Image]) -> bool:
         """Returns old labels"""
         if labels is not None:
-            if not self.raw.is_compatible(labels):
-                raise ValueError(
-                    "Given labels incompatible with raw: must be an Image of the same shape, resolution, and offset"
-                )
+            self.raw.raise_on_incompatible(labels, ("raw", "labels"))
         ret = self.labels is not None
         self.labels = labels
         return ret

@@ -4,8 +4,9 @@ from typing import Tuple, Optional, Union, Iterable
 import re
 from pathlib import Path
 from argparse import ArgumentParser
+from enum import auto
 
-from strenum import StrEnum, auto
+from strenum import StrEnum
 import numpy as np
 
 from ..io import Image
@@ -197,18 +198,19 @@ def setup_logging_argv(args=None, strip=False):
         return args
 
 
-def setup_logging(root_lvl, dep_lvl):
+def setup_logging(root_lvl, dep_lvl=None):
     logging.basicConfig(level=root_lvl)
-    for name in [
-        "requests",
-        "urllib3",
-        "numexpr",
-        "ipykernel",
-        "asyncio",
-        "traitlets",
-        "parso",
-    ]:
-        logging.getLogger(name).setLevel(dep_lvl)
+    if dep_lvl is not None and dep_lvl != root_lvl:
+        for name in [
+            "requests",
+            "urllib3",
+            "numexpr",
+            "ipykernel",
+            "asyncio",
+            "traitlets",
+            "parso",
+        ]:
+            logging.getLogger(name).setLevel(dep_lvl)
 
 
 def add_verbosity(parser: ArgumentParser):
@@ -226,19 +228,19 @@ def slicing_offset(slicing, shape):
     if ellipsis_count > 1:
         raise ValueError("More than one ellipsis")
     elif ellipsis_count == 1:
-        slicing = []
+        this_slicing = []
         for sl in slicing:
             if sl == Ellipsis:
                 to_add = max(0, len(shape) - len(slicing) + 1)
-                slicing.extend(slice(None) for _ in range(to_add))
+                this_slicing.extend(slice(None) for _ in range(to_add))
             else:
-                slicing.append(sl)
-        slicing = tuple(slicing)
+                this_slicing.append(sl)
+        slicing = tuple(this_slicing)
     elif ellipsis_count == 0:
         slicing += tuple(slice(None) for _ in range(len(shape) - len(slicing)))
 
     if len(slicing) != len(shape):
-        raise ValueError("Could not rectify sizes of slicing and shape")
+        raise ValueError("Could not rectify sizes of slicing <%s> and shape <%s>", slicing, shape)
 
     offset = []
     for sl, sh in zip(slicing, shape):
@@ -254,7 +256,7 @@ def slicing_offset(slicing, shape):
     return tuple(offset)
 
 
-def rectify_offset_res(ds_res, ds_offset, res, offset, slicing, shape, force):
+def rectify_res_offset(ds_res, ds_offset, res, offset, slicing, shape, force):
     try:
         new_res = same_arrs([ds_res, res], DEFAULT_RESOLUTION, force)
         int_offset = (
@@ -265,13 +267,13 @@ def rectify_offset_res(ds_res, ds_offset, res, offset, slicing, shape, force):
         raise ValueError(
             "Mismatch between resolution/ offset in file and explicitly given "
         )
-    return new_off, new_res
+    return new_res, new_off
 
 
 def hdf5_to_image(
     data_address: DataAddress,
-    offset=None,
     resolution=None,
+    offset=None,
     force=False,
     transpose=False,
 ):
@@ -288,7 +290,7 @@ def hdf5_to_image(
         this_off = rev(this_off)
         this_res = rev(this_res)
 
-    new_res, new_off = rectify_offset_res(
+    new_res, new_off = rectify_res_offset(
         this_res, this_off, resolution, offset, data_address.slicing, shape, force
     )
 
@@ -297,8 +299,8 @@ def hdf5_to_image(
 
 def zarr_to_image(
     data_address: DataAddress,
-    offset=None,
     resolution=None,
+    offset=None,
     force=False,
     transpose=False,
 ):
@@ -319,7 +321,7 @@ def zarr_to_image(
         this_off = rev(this_off)
         this_res = rev(this_res)
 
-    new_res, new_off = rectify_offset_res(
+    new_res, new_off = rectify_res_offset(
         this_res, this_off, resolution, offset, data_address.slicing, shape, force
     )
 
@@ -346,7 +348,7 @@ def n5_to_image(
         this_off = rev(this_off)
         this_res = rev(this_res)
 
-    new_res, new_off = rectify_offset_res(
+    new_res, new_off = rectify_res_offset(
         this_res, this_off, resolution, offset, data_address.slicing, shape, force
     )
 
@@ -360,7 +362,9 @@ def read_image(
         StoreFormat.HDF5: hdf5_to_image,
         StoreFormat.ZARR: zarr_to_image,
         StoreFormat.N5: n5_to_image,
-    }[StoreFormat.from_path_name(address.file_path, address.object_name)]  # type: ignore
+    }[
+        StoreFormat.from_path_name(address.file_path, address.object_name)
+    ]  # type: ignore
     return reader(address, offset, resolution, force, transpose)
 
 

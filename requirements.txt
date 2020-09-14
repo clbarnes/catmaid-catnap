@@ -9,6 +9,8 @@ scipy
 scikit-image
 pandas
 StrEnum
+zarr
+pyn5
 
 # dev
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Tuple, DefaultDict
 from itertools import combinations
 import logging
+from collections import defaultdict
+import warnings
 
 import pandas as pd
 import numpy as np
@@ -128,7 +130,30 @@ class FalseSplit(LocationOfInterest):
         )
 
 
+def incrementor(start=0):
+    while True:
+        yield start
+        start += 1
+
+
+def id_map_factory(start=0):
+    incr = incrementor(start)
+
+    def new_val():
+        return next(incr)
+
+    return new_val
+
+
 class Assessor(TransformerMixin):
+    """
+    Attributes
+    ----------
+    treenodes:
+      treenode_id, parent_id, skeleton_id, z, y, x, z_px, y_px, x_px, in_raw, treenode_id_parent, skeleton_id_parent, z_parent, y_parent, x_parent, z_px_parent, y_px_parent, x_px_parent, in_raw_parent, label, label_parent
+
+    """
+
     _transformer_attr = "io"
 
     def __init__(self, catnap_io: CatnapIO):
@@ -136,6 +161,7 @@ class Assessor(TransformerMixin):
         if catnap_io.labels is None:
             raise ValueError("Given CatnapIO must have a label volume")
         self.io = catnap_io
+
         self.treenodes = self._prepare_treenodes()
 
     @property
@@ -203,6 +229,10 @@ class Assessor(TransformerMixin):
         return all_parent
 
     def relabel(self) -> Assessor:
+        """Create new labels for every connected component.
+
+        Useful to distinguish between disconnected fragments with the same label.
+        """
         if self.io.labels is not None:
             logger.info("Relabelling volume")
             lbl = self.io.labels
@@ -221,5 +251,53 @@ class Assessor(TransformerMixin):
                 self.io.connectors,
                 self.io.partners,
                 labels,
+            )
+        )
+
+    def _merge_skeleton_mappings(self) -> Iterator[Tuple[int, int]]:
+        """Get best-effort mappings required for skeletons to share a label.
+        """
+        tns = self.treenodes
+        new_id = self.io.labels.max_plus_one()
+        seg_skels = defaultdict(set)
+        for row in tns.itertuples(index=False):
+            seg_skels[row.label].add(row.skeleton_id)
+
+        skel_label: DefaultDict[int, int] = defaultdict(id_map_factory(new_id))
+
+        for current_label, skels in sorted(seg_skels.items()):
+            if len(skels) != 1:
+                warnings.warn(
+                    f"Skipping merge: multiple skeletons found in fragment with label {current_label} ({sorted(skels)})"
+                )
+                continue
+            skel = list(skels).pop()
+            new_label = skel_label[skel]
+            yield current_label, new_label
+
+    def merge_skeleton_labels(self):
+        """Relabel segments so that skeletons share a label.
+
+        For every skeleton, flood fill any fragment containing only treenodes from that skeleton.
+        An unused new label is chosen for each skeleton.
+
+        Segments with treenodes from more than one skeleton will be skipped.
+        """
+        label_arr = self.io.labels.array
+        for current_label, new_label in self._merge_skeleton_mappings():
+            label_arr[label_arr == current_label] = new_label
+        label_img = Image(
+            label_arr,
+            self.io.labels.resolution,
+            self.io.labels.resolution,
+            self.io.labels.dims,
+        )
+        return type(self)(
+            CatnapIO(
+                self.io.raw,
+                self.io.treenodes,
+                self.io.connectors,
+                self.io.partners,
+                label_img,
             )
         )

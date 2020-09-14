@@ -3,6 +3,9 @@ from typing import NamedTuple, Iterable, Tuple, List, Dict, Union, Optional
 from copy import copy
 import datetime as dt
 import logging
+from copy import copy
+from collections import defaultdict
+import warnings
 
 import numpy as np
 import napari
@@ -13,6 +16,7 @@ from coordinates import MathDict
 from .io import CatnapIO, Image, TransformerMixin
 from .navigator import Navigator
 from .utils import Viewable
+from .assess import Assessor
 
 logger = logging.getLogger(__name__)
 
@@ -401,3 +405,23 @@ class CatnapViewer(TransformerMixin):
         If any dimension is not given, it will be kept the same.
         """
         self._navigator.move_to(x, y, z)
+
+    def merge_skeleton_labels(self):
+        """Relabel segments so that skeletons share a label.
+
+        For every skeleton, flood fill any fragment containing only treenodes from that skeleton.
+        An unused new label is chosen for each skeleton.
+
+        Segments with treenodes from more than one skeleton will be skipped.
+        """
+        new_io = copy(self.io)
+        new_io.labels = Image(
+            self.labels_layer.data,
+            self.io.raw.resolution,
+            self.io.raw.offset,
+            self.io.raw.dims,
+        )
+        assessor = Assessor(new_io)
+        l_data = self.labels_layer.data
+        for current_label, new_label in list(assessor._merge_skeleton_mappings()):
+            l_data[l_data == current_label] = new_label

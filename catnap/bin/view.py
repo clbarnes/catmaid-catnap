@@ -1,6 +1,12 @@
 from argparse import ArgumentParser
 
-from .utils import parse_hdf5_path, setup_logging_argv, add_verbosity, DataAddress, hdf5_to_image
+from .utils import (
+    parse_hdf5_path,
+    setup_logging_argv,
+    add_verbosity,
+    DataAddress,
+    hdf5_to_image,
+)
 from .. import CatnapIO, CatnapViewer, gui_qt
 
 
@@ -12,7 +18,6 @@ def add_arguments(parser: ArgumentParser):
     parser.add_argument(
         "-l",
         "--label",
-        type=parse_hdf5_path,
         help="Path to HDF5 dataset containing label data (if it's not in the expected place in the input HDF5), in the form '{file_path}:{group_path}'. If the file path is not given, uses the 'input' file.",
     )
 
@@ -29,9 +34,8 @@ def main():
     io = CatnapIO.from_hdf5(inp_add.file_path, inp_add.object_name, label_given)
     if label_given:
         lab_add = DataAddress.from_str(args.label, slicing=...)
-        io.labels = hdf5_to_image(lab_add)
-        if not io.raw.is_compatible(io.labels):
-            raise ValueError("Raw and labels must have same resolution and offset")
+        # import ipdb; ipdb.set_trace()
+        io.set_labels(hdf5_to_image(lab_add))
 
     with gui_qt():
         cviewer = CatnapViewer(io)
