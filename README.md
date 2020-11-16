@@ -20,8 +20,8 @@ For more complex tasks, consider
 Create a file for use with catnap using an existing raw image dataset, fetching annotation data from CATMAID, and creating a volume for labels with seed labels around treenodes.
 
 ```_catnap_create
-usage: catnap-create [-h] [-o OFFSET] [-r RESOLUTION] [--label LABEL]
-                     [-s SEED_RADIUS] [--base-url BASE_URL]
+usage: catnap-create [-h] [-o OFFSET] [-r RESOLUTION] [-f] [-t]
+                     [--label LABEL] [-s SEED_RADIUS] [--base-url BASE_URL]
                      [--project-id PROJECT_ID] [--token TOKEN]
                      [--auth-name AUTH_NAME] [--auth-pass AUTH_PASS]
                      [-c CREDENTIALS] [-v]
@@ -47,6 +47,11 @@ optional arguments:
                         form 'z,y,x'. Will default to the raw dataset's
                         'resolution' attribute if applicable, or '1,1,1'
                         otherwise
+  -f, --force           Force usage of the given offset and arguments, even if
+                        the dataset has its own which do not match
+  -t, --transpose-attrs
+                        Reverse offset and resolution attributes read from the
+                        source (may be necessary in some N5 datasets
   --label LABEL, -l LABEL
                         If there is existing label data, give it here in the
                         same format as for 'input'. Offset and resolution are
@@ -81,16 +86,21 @@ catnap-create existing_data.hdf5:/raw catnap_format.hdf5 --credentials my_creden
 Open a napari window viewing the pre-formatted data for label annotation.
 
 ```_catnap
-usage: catnap [-h] [-v] input
+usage: catnap [-h] [-v] [-l LABEL] input
 
 positional arguments:
-  input          Path to HDF5 group containing catnap-formatted data, in the
-                 form'{file_path}:{group_path}'. If the group path is not
-                 given, it will default to the file's root.
+  input                 Path to HDF5 group containing catnap-formatted data,
+                        in the form '{file_path}:{group_path}'. If the group
+                        path is not given, it will default to the file's root.
 
 optional arguments:
-  -h, --help     show this help message and exit
-  -v, --verbose  Increase logging verbosity
+  -h, --help            show this help message and exit
+  -v, --verbose         Increase logging verbosity
+  -l LABEL, --label LABEL
+                        Path to HDF5 dataset containing label data (if it's
+                        not in the expected place in the input HDF5), in the
+                        form '{file_path}:{group_path}'. If the file path is
+                        not given, uses the 'input' file.
 ```
 
 e.g.
@@ -104,13 +114,15 @@ catnap catnap_format.hdf5
 Write CSVs of false splits and merges.
 
 ```_catnap_assess
-usage: catnap-assess [-h] [-v] [-m FALSE_MERGE] [-s FALSE_SPLIT] [-r] input
+usage: catnap-assess [-h] [-v] [-m FALSE_MERGE] [-s FALSE_SPLIT] [-r]
+                     [-l LABEL]
+                     input
 
 Merges are assessed before splits regardless of argument order.
 
 positional arguments:
   input                 Path to HDF5 group containing catnap-formatted data,
-                        in the form'{file_path}:{group_path}'. If the group
+                        in the form '{file_path}:{group_path}'. If the group
                         path is not given, it will default to the file's root.
 
 optional arguments:
@@ -126,6 +138,10 @@ optional arguments:
                         assess whether there are skeletons which correctly
                         share labels around their treenodes, but those
                         labelled regions are not contiguous.
+  -l LABEL, --label LABEL
+                        Path to HDF5 dataset containing labels, in the form
+                        '{file_path}:{group_path}'. Must have compatible
+                        resolution and offset with 'input'.
 ```
 
 e.g.
