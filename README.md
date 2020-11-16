@@ -13,9 +13,44 @@ For more complex tasks, consider
 
 ## Usage
 
+1. Use `catnap-create` to convert hdf5/zarr/n5 image data, plus CATMAID skeleton annotations, into catnap's hdf5 format
+2. Use `catnap` to create or edit pixel labels
+3. Use `catnap-assess` to check the labels for false merges and splits
+
+### catnap GUI
+
+This is basically just a napari window.
+At time of writing, this is not particularly well documented, although `Help -> Key bindings` is useful for keyboard shortcuts.
+
+Make sure you select the `labels` layer before trying to edit.
+Press `n` to pick the `n`ext unused label, or use the colour picker to use an existing label.
+There is a button for whether labelling and paint filling should flow through onto different slices
+(I recommend against it unless you're doing a merge you understand well).
+
+Viewing in 3D (and related functions like rolling dimensions) is not supported.
+
+More advanced features, including exporting labels, are available in the ipython console built into napari.
+In the `napari` console, the CatnapViewer is available as the `cviewer` variable.
+
+```python
+>>> # Save your labels. The timestamp will be included as a dataset attribute.
+>>> cviewer.export_labels("path/to/labels.hdf5", "my_labels")
+>>> # Include the original raw and annotation data (changes to these are not saved).
+>>> # By default, internal structure is compatible with CatnapIO.from_hdf5
+>>> cviewer.export_labels("path/to/full_labels.hdf5", with_source=True)
+>>> # You can navigate in "real-world" coordinates with
+>>> cviewer.jump_to(z=19.8, y=19355)
+>>> # ... or in pixel space with
+>>> cviewer.jump_to_px(y=10, x=5)
+>>> # get more information on available functionality with
+>>> help(cviewer)
+```
+
+It is recommended that you export your labels regularly, because it's the only way to save your work.
+
 ### Command line
 
-#### Data preparation
+#### `catnap-create`: Data preparation
 
 Create a file for use with catnap using an existing raw image dataset, fetching annotation data from CATMAID, and creating a volume for labels with seed labels around treenodes.
 
@@ -81,7 +116,7 @@ e.g.
 catnap-create existing_data.hdf5:/raw catnap_format.hdf5 --credentials my_credentials.json --seed-radius=3
 ```
 
-#### Annotation
+#### `catnap`: Label editing
 
 Open a napari window viewing the pre-formatted data for label annotation.
 
@@ -109,7 +144,7 @@ e.g.
 catnap catnap_format.hdf5
 ```
 
-#### Assessment
+#### `catnap-assess`: Segmentation assessment
 
 Write CSVs of false splits and merges.
 
@@ -185,22 +220,6 @@ with gui_qt():  # this is a re-export from napari
 
 Then make your labels, using the color picker to select the labels underneath treenodes.
 Viewing in 3D is not supported.
-
-In the `napari` console, the CatnapViewer is available as the `cviewer` variable.
-
-```python
->>> # Save your labels. The timestamp will be included as a dataset attribute.
->>> cviewer.export_labels("path/to/labels.hdf5", "my_labels")
->>> # Include the original raw and annotation data (changes to these are not saved).
->>> # By default, internal structure is compatible with CatnapIO.from_hdf5
->>> cviewer.export_labels("path/to/full_labels.hdf5", with_source=True)
->>> # You can navigate in "real-world" coordinates with
->>> cviewer.jump_to(z=19.8, y=19355)
->>> # ... or in pixel space with
->>> cviewer.jump_to_px(y=10, x=5)
->>> # get more information on available functionality with
->>> help(cviewer)
-```
 
 ## Notes
 
