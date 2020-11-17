@@ -26,9 +26,10 @@ def add_arguments(parser: ArgumentParser):
         "input",
         help="Path to HDF5 group containing catnap-formatted data, in the form '{file_path}:{group_path}'. If the group path is not given, it will default to the file's root.",
     )
-    msg = "Assess false {}  and write to CSV file. If '-' is given, write to stdout."
+    msg = "Assess false {} and write to CSV file. If '-' is given, write to stdout."
     parser.add_argument("-m", "--false-merge", help=msg.format("merges"))
     parser.add_argument("-s", "--false-split", help=msg.format("splits"))
+    parser.add_argument("-u", "--untraced", help="Write labels of segments with no treenodes in them. If '-' is given, write to stdout.")
     parser.add_argument(
         "-r",
         "--relabel",
@@ -76,3 +77,9 @@ def main():
             print(FalseSplit.header(), file=f)
             for m in assessor.false_splits():
                 print(m.as_row(), file=f)
+
+    if args.untraced:
+        logger.info("Assessing untraced segments")
+        with file_or_stdout(args.untraced) as f:
+            for m in assessor.untraced():
+                print(m, file=f)

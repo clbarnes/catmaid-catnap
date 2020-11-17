@@ -149,8 +149,8 @@ catnap catnap_format.hdf5
 Write CSVs of false splits and merges.
 
 ```_catnap_assess
-usage: catnap-assess [-h] [-v] [-m FALSE_MERGE] [-s FALSE_SPLIT] [-r]
-                     [-l LABEL]
+usage: catnap-assess [-h] [-v] [-m FALSE_MERGE] [-s FALSE_SPLIT] [-u UNTRACED]
+                     [-r] [-l LABEL]
                      input
 
 Merges are assessed before splits regardless of argument order.
@@ -169,6 +169,9 @@ optional arguments:
   -s FALSE_SPLIT, --false-split FALSE_SPLIT
                         Assess false splits and write to CSV file. If '-' is
                         given, write to stdout.
+  -u UNTRACED, --untraced UNTRACED
+                        Write labels of segments with no treenodes in them. If
+                        '-' is given, write to stdout.
   -r, --relabel         Assign each connected component a new label. Useful to
                         assess whether there are skeletons which correctly
                         share labels around their treenodes, but those

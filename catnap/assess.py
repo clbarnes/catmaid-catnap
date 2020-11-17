@@ -173,15 +173,27 @@ class Assessor(TransformerMixin):
         in_raw_parent = np.asarray(self.treenodes["in_raw_parent"].fillna(False), bool)
         return self.treenodes[self.treenodes["in_raw"] & in_raw_parent]
 
-    def false_splits(self):
+    def false_splits(self) -> Iterator[FalseSplit]:
         yield from FalseSplit.from_edges(self.internal_edges)
 
-    def false_merges(self):
+    def false_merges(self) -> Iterator[FalseMerge]:
         tns = self.internal_treenodes
         for label in np.unique(tns["label"]):
             these = tns[tns["label"] == label]
             skels = np.unique(these["skeleton_id"])
             yield from FalseMerge.from_n_skeletons(label, skels, these)
+
+    def untraced(self) -> Iterator[int]:
+        """Report labelled segments with no treenodes in them; ignores 0"""
+        lbl = self.treenodes["label"]
+        node_labels = np.unique(lbl[~pd.isna(lbl)])
+        all_labels = np.unique(self.io.labels.array)
+        diff = np.setdiff1d(all_labels, node_labels, True)
+        it = iter(diff)
+        first = next(it)
+        if first != 0:
+            yield first
+        yield from it
 
     def _prepare_treenodes(self) -> pd.DataFrame:
         tns = self._treenodes_px()
