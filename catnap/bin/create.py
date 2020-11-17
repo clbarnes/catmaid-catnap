@@ -92,7 +92,6 @@ def main():
     args = parse_args()
 
     inp_add = DataAddress.from_str(args.input, slicing=...)
-    raw_fpath, raw_name = args.input
     raw = read_image(
         inp_add, args.offset, args.resolution, args.force, args.transpose_attrs,
     )
