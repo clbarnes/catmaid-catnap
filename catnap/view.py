@@ -3,9 +3,6 @@ from typing import NamedTuple, Iterable, Tuple, List, Dict, Union, Optional
 from copy import copy
 import datetime as dt
 import logging
-from copy import copy
-from collections import defaultdict
-import warnings
 
 import numpy as np
 import napari

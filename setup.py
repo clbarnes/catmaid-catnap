@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 import pathlib
-from runpy import run_path
 
 here = pathlib.Path(__file__).parent.resolve()
 
 long_description = (here / "README.md").read_text(encoding="utf-8")
-version = run_path(here / "catnap" / "version.py")["version"]
 
 setup(
     name="catmaid-catnap",
-    version=version,
     description="Experiments working with CATMAID and napari",
     long_description=long_description,
     long_description_content_type="text/markdown",

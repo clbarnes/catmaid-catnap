@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 
 from .utils import (
-    parse_hdf5_path,
     setup_logging_argv,
     add_verbosity,
     DataAddress,
