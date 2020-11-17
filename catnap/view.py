@@ -383,7 +383,7 @@ class CatnapViewer(TransformerMixin):
             img = Image(
                 arr, self.io.raw.resolution, self.io.raw.offset, self.io.raw.dims
             )
-            img.to_hdf5(fpath, name or "labels", {"date": timestamp()})
+            img.to_hdf5(fpath, name or "labels", attrs={"date": timestamp()})
 
     def jump_to(self, z=None, y=None, x=None):
         """Move the viewer to the given world coordinates.
