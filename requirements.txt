@@ -16,3 +16,4 @@ pyn5
 
 pytest
 pipe2codeblock
+setuptools-scm==4.1.2

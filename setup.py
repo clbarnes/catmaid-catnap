@@ -6,7 +6,7 @@ from runpy import run_path
 here = pathlib.Path(__file__).parent.resolve()
 
 long_description = (here / "README.md").read_text(encoding="utf-8")
-version = run_path(here / "catnap" / "version.py")["__version__"]
+version = run_path(here / "catnap" / "version.py")["version"]
 
 setup(
     name="catmaid-catnap",
@@ -39,6 +39,8 @@ setup(
         "pandas",
         "StrEnum",
     ],
+    use_scm_version=True,
+    setup_requires=["setuptools_scm"],
     entry_points={
         "console_scripts": [
             "catnap=catnap.bin.view:main",
