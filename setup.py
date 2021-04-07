@@ -33,7 +33,6 @@ setup(
         "napari[all]",
         "numpy",
         "pandas",
-        "pyn5",
         "scipy",
         "scikit-image",
         "StrEnum",

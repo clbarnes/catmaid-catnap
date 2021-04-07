@@ -8,6 +8,7 @@ from enum import auto
 
 from strenum import StrEnum
 import numpy as np
+import zarr
 
 from ..io import Image
 from ..constants import DEFAULT_OFFSET, DEFAULT_RESOLUTION
@@ -371,39 +372,13 @@ def zarr_to_image(
     return Image(arr, new_res, new_off)
 
 
-def n5_to_image(
-    data_address: DataAddress,
-    offset=None,
-    resolution=None,
-    force=False,
-    transpose=False,
-):
-    import pyn5
-
-    f = pyn5.File(data_address.file_path, pyn5.Mode.READ_ONLY)
-    ds = f[data_address.object_name]
-    arr = ds[data_address.slicing]
-    shape = ds.shape
-    this_res, this_off, resolution, offset = get_res_off(ds.attrs, resolution, offset)
-
-    if transpose:
-        this_off = rev(this_off)
-        this_res = rev(this_res)
-
-    new_res, new_off = rectify_res_offset(
-        this_res, this_off, resolution, offset, data_address.slicing, shape, force
-    )
-
-    return Image(arr, new_res, new_off)
-
-
 def read_image(
     address: DataAddress, offset=None, resolution=None, force=False, transpose=False
 ):
     reader = {
         StoreFormat.HDF5: hdf5_to_image,
         StoreFormat.ZARR: zarr_to_image,
-        StoreFormat.N5: n5_to_image,
+        StoreFormat.N5: zarr_to_image,
     }[
         StoreFormat.from_path_name(address.file_path, address.object_name)
     ]  # type: ignore
