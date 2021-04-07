@@ -1,0 +1,60 @@
+on: [push, pull_request]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  lint:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - run: pip install $(grep -E '^(black|flake8|mypy)' requirements.txt)
+      - run: flake8 .
+      - run: black . --check
+      # - run: mypy --ignore-missing-imports .
+
+  docs:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - run: pip install $(grep ^pipe2codeblock requirements.txt)
+      - run: pip install .
+      - name: Check docs are up to date
+        run: |
+          make readme
+          git diff --exit-code
+
+  test:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - run: pip install -r requirements.txt
+      - run: pip install .
+      - run: pytest -v
+
+  deploy:
+    runs-on: ubuntu-18.04
+    needs: [lint, docs, test]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - run: ./setup.py sdist
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.pypi_password }}
