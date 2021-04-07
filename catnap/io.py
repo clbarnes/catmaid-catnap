@@ -319,7 +319,10 @@ class CatnapIO(TransformerMixin):
 
     def join_tables(self):
         merged = pd.merge(
-            self.treenodes, self.partners, on="treenode_id", suffixes=("_t", "_tc"),
+            self.treenodes,
+            self.partners,
+            on="treenode_id",
+            suffixes=("_t", "_tc"),
         )
         return pd.merge(
             merged, self.connectors, on="connector_id", suffixes=("_t", "_c")

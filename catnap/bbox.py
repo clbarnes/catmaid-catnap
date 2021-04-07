@@ -146,10 +146,12 @@ class Bbox:
     def contains(self, arr):
         bools = np.logical_and(self.xmin <= arr[:, 0], arr[:, 0] < self.xmax)
         bools = np.logical_and(
-            bools, np.logical_and(self.ymin <= arr[:, 1], arr[:, 1] < self.ymax),
+            bools,
+            np.logical_and(self.ymin <= arr[:, 1], arr[:, 1] < self.ymax),
         )
         return np.logical_and(
-            bools, np.logical_and(self.zmin <= arr[:, 2], arr[:, 2] < self.zmax),
+            bools,
+            np.logical_and(self.zmin <= arr[:, 2], arr[:, 2] < self.zmax),
         )
 
     def enlarge(self, by: float) -> Bbox:

@@ -112,9 +112,9 @@ class DataAddress:
     )
 
     def __init__(self, file_path=None, object_name=None, slicing=None):
-        self.file_path: Optional[Path] = Path(
-            file_path
-        ) if file_path is not None else None
+        self.file_path: Optional[Path] = (
+            Path(file_path) if file_path is not None else None
+        )
         self.object_name: Optional[str] = object_name
         self.slicing: Optional[Slicing] = slicing
 

@@ -90,7 +90,10 @@ class FalseSplit(LocationOfInterest):
             splits[["z", "y", "x"]].to_numpy()
             + splits[["z_parent", "y_parent", "x_parent"]].to_numpy()
         ) / 2
-        for edge_row, zyx in zip(splits.itertuples(index=False), locs,):
+        for edge_row, zyx in zip(
+            splits.itertuples(index=False),
+            locs,
+        ):
             yield cls(
                 edge_row.skeleton_id,
                 edge_row.treenode_id,
@@ -252,7 +255,12 @@ class Assessor(TransformerMixin):
             relabelled = measure.label(lbl.array) + 1
             to_zero = relabelled.flatten()[first_zero]
             relabelled[relabelled == to_zero] = 0
-            labels = Image(relabelled, lbl.resolution, lbl.offset, lbl.dims,)
+            labels = Image(
+                relabelled,
+                lbl.resolution,
+                lbl.offset,
+                lbl.dims,
+            )
         else:
             labels = None
 
@@ -267,8 +275,7 @@ class Assessor(TransformerMixin):
         )
 
     def _merge_skeleton_mappings(self) -> Iterator[Tuple[int, int]]:
-        """Get best-effort mappings required for skeletons to share a label.
-        """
+        """Get best-effort mappings required for skeletons to share a label."""
         tns = self.treenodes
         new_id = self.io.labels.max_plus_one()
         seg_skels = defaultdict(set)

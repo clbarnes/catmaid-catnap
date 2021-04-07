@@ -93,7 +93,11 @@ def main():
 
     inp_add = DataAddress.from_str(args.input, slicing=...)
     raw = read_image(
-        inp_add, args.offset, args.resolution, args.force, args.transpose_attrs,
+        inp_add,
+        args.offset,
+        args.resolution,
+        args.force,
+        args.transpose_attrs,
     )
 
     if args.label is not None:
@@ -101,7 +105,11 @@ def main():
             args.label, file_path=inp_add.file_path, slicing=...
         )
         label = read_image(
-            lab_add, raw.offset, raw.resolution, args.force, args.transpose_attrs,
+            lab_add,
+            raw.offset,
+            raw.resolution,
+            args.force,
+            args.transpose_attrs,
         )
     else:
         label = None
