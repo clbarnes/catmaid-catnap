@@ -1,16 +1,16 @@
-numpy
-napari[all]
 catpy>=2020.9.3
-pandas
 coordinates
-tqdm
-tables
+h5py
+napari[all]
+numpy
+pandas
+pyn5
 scipy
 scikit-image
-pandas
 StrEnum
+tables
+tqdm
 zarr
-pyn5
 
 # dev
 
