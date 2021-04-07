@@ -86,7 +86,7 @@ optional arguments:
                         the dataset has its own which do not match
   -t, --transpose-attrs
                         Reverse offset and resolution attributes read from the
-                        source (may be necessary in some N5 datasets
+                        source (may be necessary in some N5 datasets)
   --label LABEL, -l LABEL
                         If there is existing label data, give it here in the
                         same format as for 'input'. Offset and resolution are
