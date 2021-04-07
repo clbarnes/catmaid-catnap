@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import Tuple, Optional, Union, Iterable
+from typing import Tuple, Optional, Union, Iterable, Any, Mapping
 import re
 from pathlib import Path
 from argparse import ArgumentParser
@@ -13,6 +13,15 @@ from ..io import Image
 from ..constants import DEFAULT_OFFSET, DEFAULT_RESOLUTION
 
 logger = logging.getLogger(__name__)
+
+
+def parse_tuple_or_str(s, fn=float, dims=3) -> Union[Tuple, str]:
+    try:
+        return parse_tuple(s, fn, dims)
+    except ValueError as e:
+        if "xpected length" in str(e):
+            raise
+        return s
 
 
 def parse_tuple(s, fn=float, dims=3) -> Tuple:
@@ -257,6 +266,9 @@ def slicing_offset(slicing, shape):
 
 
 def rectify_res_offset(ds_res, ds_offset, res, offset, slicing, shape, force):
+    """
+    Make sure that if a resolution/offset is given AND exists in the data, they are the same.
+    """
     try:
         new_res = same_arrs([ds_res, res], DEFAULT_RESOLUTION, force)
         int_offset = (
@@ -268,6 +280,31 @@ def rectify_res_offset(ds_res, ds_offset, res, offset, slicing, shape, force):
             "Mismatch between resolution/ offset in file and explicitly given "
         )
     return new_res, new_off
+
+
+def get_res_off(d: Mapping, resolution: Union[str, Tuple[float, ...]], offset: Union[str, Tuple[float, ...]]) -> Tuple[Any, Any, Any, Any]:
+    """
+    Account for whether the resolution/offset given is a string key, or something parseable as a tuple of numbers.
+    """
+    if isinstance(resolution, str):
+        res_key = resolution
+        out_res = None
+    else:
+        res_key = "resolution"
+        out_res = resolution
+
+    this_res = d.get(res_key)
+
+    if isinstance(offset, str):
+        off_key = offset
+        out_off = None
+    else:
+        off_key = "offset"
+        out_off = offset
+
+    this_off = d.get(off_key)
+
+    return this_res, this_off, out_res, out_off
 
 
 def hdf5_to_image(
@@ -282,8 +319,7 @@ def hdf5_to_image(
     with h5py.File(data_address.file_path, "r") as f:
         ds = f[data_address.object_name]
         shape = ds.shape
-        this_res = ds.attrs.get("resolution")
-        this_off = ds.attrs.get("offset")
+        this_res, this_off, resolution, offset = get_res_off(ds.attrs, resolution, offset)
         arr = ds[data_address.slicing]
 
     if transpose:
@@ -314,8 +350,7 @@ def zarr_to_image(
         ds = arr_or_group[data_address.object_name]
         shape = ds.shape
         arr = ds[data_address.slicing]
-    this_off = arr.attrs.get("offset")
-    this_res = arr.attrs.get("resolution")
+    this_res, this_off, resolution, offset = get_res_off(ds.attrs, resolution, offset)
 
     if transpose:
         this_off = rev(this_off)
@@ -341,8 +376,7 @@ def n5_to_image(
     ds = f[data_address.object_name]
     arr = ds[data_address.slicing]
     shape = ds.shape
-    this_off = arr.attrs.get("offset")
-    this_res = arr.attrs.get("resolution")
+    this_res, this_off, resolution, offset = get_res_off(ds.attrs, resolution, offset)
 
     if transpose:
         this_off = rev(this_off)
