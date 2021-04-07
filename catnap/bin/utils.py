@@ -349,8 +349,6 @@ def zarr_to_image(
     force=False,
     transpose=False,
 ):
-    import zarr
-
     arr_or_group = zarr.open(data_address.file_path, "r")
     if data_address.object_name is None:
         shape = arr_or_group.shape
