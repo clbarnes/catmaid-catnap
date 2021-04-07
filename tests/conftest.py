@@ -74,6 +74,7 @@ def catnap_io(raw_img: Image, label_img: Image):
     )
     connectors = pd.DataFrame([], columns=["connector_id", "z", "y", "x"])
     partners = pd.DataFrame(
-        [], columns=["skeleton_id", "treenode_id", "connector_id", "is_presynaptic"],
+        [],
+        columns=["skeleton_id", "treenode_id", "connector_id", "is_presynaptic"],
     )
     return CatnapIO(raw_img, treenodes, connectors, partners, label_img)
