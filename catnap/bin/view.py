@@ -33,7 +33,6 @@ def main():
     io = CatnapIO.from_hdf5(inp_add.file_path, inp_add.object_name, label_given)
     if label_given:
         lab_add = DataAddress.from_str(args.label, slicing=...)
-        # import ipdb; ipdb.set_trace()
         io.set_labels(hdf5_to_image(lab_add))
 
     with gui_qt():
