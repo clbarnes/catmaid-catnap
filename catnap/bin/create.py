@@ -63,7 +63,7 @@ def add_arguments(parser: ArgumentParser):
         "-t",
         "--transpose-attrs",
         action="store_true",
-        help="Reverse offset and resolution attributes read from the source (may be necessary in some N5 datasets",
+        help="Reverse offset and resolution attributes read from the source (may be necessary in some N5 datasets)",
     )
     parser.add_argument(
         "--label",
