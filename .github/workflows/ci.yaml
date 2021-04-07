@@ -4,6 +4,8 @@ defaults:
   run:
     shell: bash
 
+# TODO: make pytest work without editable installs
+
 jobs:
 
   lint:
@@ -26,7 +28,7 @@ jobs:
         with:
           python-version: '3.x'
       - run: pip install $(grep ^pipe2codeblock requirements.txt)
-      - run: pip install .
+      - run: pip install -e .
       - name: Check docs are up to date
         run: |
           make readme
@@ -43,7 +45,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -r requirements.txt
-      - run: pip install .
+      - run: pip install -e .
       - run: pytest -v
 
   deploy:
