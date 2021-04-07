@@ -129,19 +129,25 @@ class Image(TransformerMixin):
         diffs = self.extents - coord
         return np.all(diffs[0] <= 0) and np.all(diffs[1] >= 0)
 
-    def sub_image_px(self, internal_offset: Tuple[int, int, int], shape: Tuple[int, int, int]) -> Image:
+    def sub_image_px(
+        self, internal_offset: Tuple[int, int, int], shape: Tuple[int, int, int]
+    ) -> Image:
         int_off = np.asarray(internal_offset, int)
         if np.any(int_off < 0):
             raise ValueError("internal_offset must be positive")
         if np.any(int_off + shape > self.array.shape):
             raise ValueError("sub-image extends beyond image")
-        slicing = tuple(
-            slice(o, o + s) for o, s in zip(int_off, shape)
-        )
+        slicing = tuple(slice(o, o + s) for o, s in zip(int_off, shape))
         arr = self.array[slicing]
-        return type(self)(arr, self.resolution, self.offset + int_off * self.resolution, self.dims)
+        return type(self)(
+            arr, self.resolution, self.offset + int_off * self.resolution, self.dims
+        )
 
-    def sub_image(self, internal_offset: Tuple[float, float, float], shape: Tuple[float, float, float]) -> Image:
+    def sub_image(
+        self,
+        internal_offset: Tuple[float, float, float],
+        shape: Tuple[float, float, float],
+    ) -> Image:
         """Start and stop points are found in world coordinates; then rounded to pixels"""
         offset_px = np.round(self.offset + internal_offset).astype(int)
         stop_px = np.round(self.offset + internal_offset + shape).astype(int)

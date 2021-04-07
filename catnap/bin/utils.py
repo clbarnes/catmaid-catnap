@@ -249,7 +249,9 @@ def slicing_offset(slicing, shape):
         slicing += tuple(slice(None) for _ in range(len(shape) - len(slicing)))
 
     if len(slicing) != len(shape):
-        raise ValueError("Could not rectify sizes of slicing <%s> and shape <%s>", slicing, shape)
+        raise ValueError(
+            "Could not rectify sizes of slicing <%s> and shape <%s>", slicing, shape
+        )
 
     offset = []
     for sl, sh in zip(slicing, shape):
@@ -282,7 +284,11 @@ def rectify_res_offset(ds_res, ds_offset, res, offset, slicing, shape, force):
     return new_res, new_off
 
 
-def get_res_off(d: Mapping, resolution: Union[str, Tuple[float, ...]], offset: Union[str, Tuple[float, ...]]) -> Tuple[Any, Any, Any, Any]:
+def get_res_off(
+    d: Mapping,
+    resolution: Union[str, Tuple[float, ...]],
+    offset: Union[str, Tuple[float, ...]],
+) -> Tuple[Any, Any, Any, Any]:
     """
     Account for whether the resolution/offset given is a string key, or something parseable as a tuple of numbers.
     """
@@ -319,7 +325,9 @@ def hdf5_to_image(
     with h5py.File(data_address.file_path, "r") as f:
         ds = f[data_address.object_name]
         shape = ds.shape
-        this_res, this_off, resolution, offset = get_res_off(ds.attrs, resolution, offset)
+        this_res, this_off, resolution, offset = get_res_off(
+            ds.attrs, resolution, offset
+        )
         arr = ds[data_address.slicing]
 
     if transpose:

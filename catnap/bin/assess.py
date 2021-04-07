@@ -29,7 +29,11 @@ def add_arguments(parser: ArgumentParser):
     msg = "Assess false {} and write to CSV file. If '-' is given, write to stdout."
     parser.add_argument("-m", "--false-merge", help=msg.format("merges"))
     parser.add_argument("-s", "--false-split", help=msg.format("splits"))
-    parser.add_argument("-u", "--untraced", help="Write labels of segments with no treenodes in them. If '-' is given, write to stdout.")
+    parser.add_argument(
+        "-u",
+        "--untraced",
+        help="Write labels of segments with no treenodes in them. If '-' is given, write to stdout.",
+    )
     parser.add_argument(
         "-r",
         "--relabel",
