@@ -6,6 +6,8 @@ here = pathlib.Path(__file__).parent.resolve()
 
 long_description = (here / "README.md").read_text(encoding="utf-8")
 
+packages = find_packages(include=["catnap*"])
+
 setup(
     name="catmaid-catnap",
     description="Experiments working with CATMAID and napari",
@@ -24,7 +26,7 @@ setup(
         "Programming Language :: Python :: 3 :: Only",
     ],
     keywords="neuroscience, connectomics, image, graph",
-    packages=find_packages(include=["catnap*"]),
+    packages=packages,
     python_requires=">=3.7, <4",
     install_requires=[
         "catpy>=2020.9.3",

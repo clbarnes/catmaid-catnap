@@ -10,6 +10,7 @@ from strenum import StrEnum
 import numpy as np
 import zarr
 
+from .. import __version__
 from ..io import Image
 from ..constants import DEFAULT_OFFSET, DEFAULT_RESOLUTION
 
@@ -177,19 +178,9 @@ def parse_hdf5_path(
 def setup_logging_argv(args=None, strip=False):
     if args is None:
         args = sys.argv[1:]
-
-    out = []
-    regex = re.compile("-v+")
-    counter = 0
-    for arg in args[1:]:
-        if arg == "--verbose":
-            counter += 1
-        else:
-            match = regex.fullmatch(arg)
-            if match is None:
-                out.append(arg)
-            else:
-                counter += len(arg) - 1
+    parser = ArgumentParser(add_help=False)
+    add_verbosity(parser)
+    parsed, other = parser.parse_known_args(args)
 
     root_lvl, dep_level = {
         0: (logging.WARNING, logging.WARNING),
@@ -197,13 +188,13 @@ def setup_logging_argv(args=None, strip=False):
         2: (logging.DEBUG, logging.WARNING),
         3: (logging.DEBUG, logging.INFO),
         4: (logging.DEBUG, logging.DEBUG),
-    }.get(counter, (logging.DEBUG, logging.DEBUG))
+    }.get(parsed.verbose, (logging.DEBUG, logging.DEBUG))
 
     setup_logging(root_lvl, dep_level)
-    logger.debug("Set verbosity to %s", counter)
+    logger.debug("Set verbosity to %s", parsed.verbose)
 
     if strip:
-        return out
+        return other
     else:
         return args
 
@@ -225,8 +216,12 @@ def setup_logging(root_lvl, dep_lvl=None):
 
 def add_verbosity(parser: ArgumentParser):
     parser.add_argument(
-        "-v", "--verbose", action="count", help="Increase logging verbosity"
+        "-v", "--verbose", action="count", default=0, help="Increase logging verbosity"
     )
+
+
+def add_version(parser: ArgumentParser):
+    parser.add_argument('-V', '--version', action='version', version=__version__)
 
 
 def slicing_offset(slicing, shape):

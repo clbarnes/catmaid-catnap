@@ -55,11 +55,11 @@ It is recommended that you export your labels regularly, because it's the only w
 Create a file for use with catnap using an existing raw image dataset, fetching annotation data from CATMAID, and creating a volume for labels with seed labels around treenodes.
 
 ```_catnap_create
-usage: catnap-create [-h] [-o OFFSET] [-r RESOLUTION] [-f] [-t]
+usage: catnap-create [-h] [-v] [-V] [-o OFFSET] [-r RESOLUTION] [-f] [-t]
                      [--label LABEL] [-s SEED_RADIUS] [--base-url BASE_URL]
                      [--project-id PROJECT_ID] [--token TOKEN]
                      [--auth-name AUTH_NAME] [--auth-pass AUTH_PASS]
-                     [-c CREDENTIALS] [-v]
+                     [-c CREDENTIALS]
                      input output
 
 positional arguments:
@@ -72,6 +72,8 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --verbose         Increase logging verbosity
+  -V, --version         show program's version number and exit
   -o OFFSET, --offset OFFSET
                         Offset, in world units, of the raw data's (0, 0, 0)
                         from the CATMAID project's (0, 0, 0), in the form
@@ -95,7 +97,6 @@ optional arguments:
   -s SEED_RADIUS, --seed-radius SEED_RADIUS
                         Radius of the label seed squares placed at each
                         treenode, in px
-  -v, --verbose         Increase logging verbosity
 
 catmaid connection details:
   --base-url BASE_URL   Base CATMAID URL to make requests to
@@ -121,7 +122,7 @@ catnap-create existing_data.hdf5:/raw catnap_format.hdf5 --credentials my_creden
 Open a napari window viewing the pre-formatted data for label annotation.
 
 ```_catnap
-usage: catnap [-h] [-v] [-l LABEL] input
+usage: catnap [-h] [-v] [-V] [-l LABEL] input
 
 positional arguments:
   input                 Path to HDF5 group containing catnap-formatted data,
@@ -131,6 +132,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         Increase logging verbosity
+  -V, --version         show program's version number and exit
   -l LABEL, --label LABEL
                         Path to HDF5 dataset containing label data (if it's
                         not in the expected place in the input HDF5), in the
@@ -149,8 +151,8 @@ catnap catnap_format.hdf5
 Write CSVs of false splits and merges.
 
 ```_catnap_assess
-usage: catnap-assess [-h] [-v] [-m FALSE_MERGE] [-s FALSE_SPLIT] [-u UNTRACED]
-                     [-r] [-l LABEL]
+usage: catnap-assess [-h] [-V] [-v] [-m FALSE_MERGE] [-s FALSE_SPLIT]
+                     [-u UNTRACED] [-r] [-l LABEL]
                      input
 
 Merges are assessed before splits regardless of argument order.
@@ -162,6 +164,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -V, --version         show program's version number and exit
   -v, --verbose         Increase logging verbosity
   -m FALSE_MERGE, --false-merge FALSE_MERGE
                         Assess false merges and write to CSV file. If '-' is

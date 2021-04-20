@@ -5,7 +5,7 @@ import logging
 
 from .. import CatnapIO, Assessor
 from ..assess import FalseMerge, FalseSplit
-from .utils import setup_logging_argv, add_verbosity, DataAddress, hdf5_to_image
+from .utils import add_verbosity, setup_logging_argv, add_version, DataAddress, hdf5_to_image
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,8 @@ def file_or_stdout(p):
 
 
 def add_arguments(parser: ArgumentParser):
+    add_version(parser)
+    add_verbosity(parser)
     parser.add_argument(
         "input",
         help="Path to HDF5 group containing catnap-formatted data, in the form '{file_path}:{group_path}'. If the group path is not given, it will default to the file's root.",
@@ -53,7 +55,6 @@ def main():
     parser = ArgumentParser(
         description="Merges are assessed before splits regardless of argument order."
     )
-    add_verbosity(parser)
     add_arguments(parser)
     args = parser.parse_args()
     inp_add = DataAddress.from_str(args.input, no_slice=True, object_name="/")

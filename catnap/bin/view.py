@@ -1,8 +1,9 @@
 from argparse import ArgumentParser
 
 from .utils import (
-    setup_logging_argv,
     add_verbosity,
+    setup_logging_argv,
+    add_version,
     DataAddress,
     hdf5_to_image,
 )
@@ -25,6 +26,7 @@ def main():
     setup_logging_argv()
     parser = ArgumentParser()
     add_verbosity(parser)
+    add_version(parser)
     add_arguments(parser)
     args = parser.parse_args()
 

@@ -8,6 +8,7 @@ from catpy import CatmaidClient
 from .utils import (
     parse_tuple,
     setup_logging_argv,
+    add_version,
     add_verbosity,
     DataAddress,
     read_image,
@@ -33,6 +34,8 @@ def add_catmaid_args(parser: ArgumentParser):
 
 
 def add_arguments(parser: ArgumentParser):
+    add_verbosity(parser)
+    add_version(parser)
     parser.add_argument(
         "input",
         help="Path to HDF5 dataset containing raw data, in the form '{file_path}:{dataset_path}'",
@@ -83,7 +86,6 @@ def add_arguments(parser: ArgumentParser):
 def parse_args(args=None):
     parser = ArgumentParser()
     add_arguments(parser)
-    add_verbosity(parser)
     return parser.parse_args(args)
 
 
