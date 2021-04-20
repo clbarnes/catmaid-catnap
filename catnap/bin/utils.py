@@ -209,6 +209,7 @@ def setup_logging(root_lvl, dep_lvl=None):
             "asyncio",
             "traitlets",
             "parso",
+            "napari",
         ]:
             logging.getLogger(name).setLevel(dep_lvl)
 

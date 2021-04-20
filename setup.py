@@ -32,7 +32,7 @@ setup(
         "catpy>=2020.9.3",
         "coordinates",
         "h5py",
-        "napari[all]",
+        "napari[all]~=0.4.6",
         "numpy",
         "pandas",
         "scipy",

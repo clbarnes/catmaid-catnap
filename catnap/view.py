@@ -232,7 +232,7 @@ class CatnapViewer(TransformerMixin):
 
         self.prerenderer = internal
 
-        self.viewer = napari.Viewer("catnap", axis_labels=("z", "y", "x"))
+        self.viewer = napari.Viewer(title="catnap", axis_labels=("z", "y", "x"))
         self.layers: Dict[str, napari.layers.Layer] = dict()
         self._inner_joined_tables = None
         self._navigator = Navigator(self.viewer)
