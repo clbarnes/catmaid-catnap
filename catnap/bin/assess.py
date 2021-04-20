@@ -5,7 +5,13 @@ import logging
 
 from .. import CatnapIO, Assessor
 from ..assess import FalseMerge, FalseSplit
-from .utils import add_verbosity, setup_logging_argv, add_version, DataAddress, hdf5_to_image
+from .utils import (
+    add_verbosity,
+    setup_logging_argv,
+    add_version,
+    DataAddress,
+    hdf5_to_image,
+)
 
 logger = logging.getLogger(__name__)
 

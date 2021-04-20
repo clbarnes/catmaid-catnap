@@ -1,7 +1,6 @@
 import sys
 import logging
 from typing import Tuple, Optional, Union, Iterable, Any, Mapping
-import re
 from pathlib import Path
 from argparse import ArgumentParser
 from enum import auto
@@ -221,7 +220,7 @@ def add_verbosity(parser: ArgumentParser):
 
 
 def add_version(parser: ArgumentParser):
-    parser.add_argument('-V', '--version', action='version', version=__version__)
+    parser.add_argument("-V", "--version", action="version", version=__version__)
 
 
 def slicing_offset(slicing, shape):
