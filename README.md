@@ -23,7 +23,6 @@ This is basically just a napari window.
 At time of writing, this is not particularly well documented, although `Help -> Key bindings` is useful for keyboard shortcuts.
 
 Make sure you select the `labels` layer before trying to edit.
-Press `n` to pick the `n`ext unused label, or use the colour picker to use an existing label.
 There is a button for whether labelling and paint filling should flow through onto different slices
 (I recommend against it unless you're doing a merge you understand well).
 

@@ -238,10 +238,8 @@ class CatnapViewer(TransformerMixin):
         self._navigator = Navigator(self.viewer)
 
     def _keybinds(self):
-        @self.labels_layer.bind_key("n")
-        def next_id(_):
-            """Set the active label to an unused one"""
-            self.next_id()
+        # add additional keybinds here
+        pass
 
     @property
     def io(self):
@@ -273,13 +271,6 @@ class CatnapViewer(TransformerMixin):
     def labels_layer(self) -> napari.layers.Labels:
         """Return napari.Layer for label data or None"""
         return self.layers.get(self._labels_name)
-
-    def next_id(self):
-        """Switch to an unused label"""
-        # this_id = self._lowest_unused_label()
-        this_id = self._max_label_plus_one()
-        self.labels_layer.selected_label = this_id
-        return this_id
 
     def show(self):
         self.layers[self._raw_name] = self.viewer.add_image(
