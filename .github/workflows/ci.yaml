@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: '3.x'
       - run: pip install $(grep ^pipe2codeblock requirements.txt)
-      - run: pip install -e .
+      - run: pip install .
       - name: Check docs are up to date
         run: |
           make readme
@@ -46,6 +46,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -r requirements.txt
       - run: pip install .
+      - run: catnap --help
+      - run: catnap-assess --help
+      - run: catnap-create --help
       - run: pytest -v
 
   deploy:
