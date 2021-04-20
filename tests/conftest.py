@@ -1,11 +1,13 @@
 from itertools import combinations_with_replacement
 from typing import List, Tuple, Optional
+import sys
 
 import pytest
 import numpy as np
 import pandas as pd
 
-from catnap import Image, CatnapIO
+sys.path.pop(0)
+from catnap import Image, CatnapIO  # noqa: E402
 
 SHAPE = (2, 10, 10)
 
